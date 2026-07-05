@@ -19,7 +19,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("medbill-bot")
 
-MODEL = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+MODEL = "us.anthropic.claude-sonnet-4-6"
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB
 MAX_BILL_CHARS = 30_000  # keep prompt sizes sane / cost predictable
 

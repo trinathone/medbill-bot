@@ -6,7 +6,6 @@
   <title>MedBill — AI Medical Bill Analyzer</title>
   <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600&family=Source+Code+Pro:wght@400;500;700&display=swap" rel="stylesheet"/>
   <style>
-    /* ─── Stripe Design Tokens ───────────────────────────── */
     :root {
       --white:      #ffffff;
       --bg:         #f6f9fc;
@@ -19,25 +18,23 @@
       --purple-lt:  #b9b9f9;
       --brand-dark: #1c1e54;
       --border:     #e5edf5;
-      --success-bg: rgba(21,190,83,0.15);
-      --success-bd: rgba(21,190,83,0.35);
+      --success-bg: rgba(21,190,83,0.12);
+      --success-bd: rgba(21,190,83,0.3);
       --success-tx: #108c3d;
-      --warn-bg:    rgba(245,158,11,0.12);
-      --warn-bd:    rgba(245,158,11,0.3);
+      --warn-bg:    rgba(245,158,11,0.1);
+      --warn-bd:    rgba(245,158,11,0.28);
       --warn-tx:    #92550a;
-      --err-bg:     rgba(239,68,68,0.1);
-      --err-bd:     rgba(239,68,68,0.25);
+      --err-bg:     rgba(239,68,68,0.08);
+      --err-bd:     rgba(239,68,68,0.22);
       --err-tx:     #c0152b;
-      --info-bg:    rgba(83,58,253,0.07);
-      --info-bd:    rgba(83,58,253,0.2);
-      --shadow-a:   rgba(50,50,93,0.25);
-      --shadow-b:   rgba(0,0,0,0.08);
-      --mono:       'Source Code Pro', ui-monospace, 'SF Mono', Menlo, monospace;
+      --info-bg:    rgba(83,58,253,0.06);
+      --info-bd:    rgba(83,58,253,0.18);
+      --shadow-a:   rgba(50,50,93,0.22);
+      --shadow-b:   rgba(0,0,0,0.07);
+      --mono: 'Source Code Pro', ui-monospace, 'SF Mono', Menlo, monospace;
     }
-
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
-
     body {
       font-family: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', sans-serif;
       font-feature-settings: 'ss01';
@@ -46,554 +43,199 @@
       min-height: 100dvh;
       -webkit-font-smoothing: antialiased;
     }
-
     ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-    /* ─── Nav ────────────────────────────────────────────── */
+    /* ── Nav ── */
     nav {
       position: sticky; top: 0; z-index: 50;
-      background: rgba(255,255,255,0.92);
+      background: rgba(255,255,255,0.93);
       backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
       border-bottom: 1px solid var(--border);
       height: 60px;
       display: flex; align-items: center;
       padding: 0 32px;
     }
-    .nav-inner {
-      width: 100%; max-width: 1080px; margin: 0 auto;
-      display: flex; align-items: center; gap: 10px;
-    }
-    .logo {
-      display: flex; align-items: center; gap: 10px;
-      text-decoration: none;
-    }
-    .logo-icon {
-      width: 32px; height: 32px;
-      background: var(--purple);
-      border-radius: 6px;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-    }
+    .nav-inner { width: 100%; max-width: 1080px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .logo-icon { width: 32px; height: 32px; background: var(--purple); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
     .logo-icon svg { width: 17px; height: 17px; color: #fff; }
-    .logo-name {
-      font-size: 16px; font-weight: 500;
-      color: var(--heading);
-      letter-spacing: -0.2px;
-    }
-    .nav-pill {
-      font-size: 10px; font-weight: 500;
-      font-family: var(--mono);
-      color: var(--success-tx);
-      background: var(--success-bg);
-      border: 1px solid var(--success-bd);
-      border-radius: 4px;
-      padding: 2px 7px;
-    }
+    .logo-name { font-size: 16px; font-weight: 500; color: var(--heading); letter-spacing: -0.2px; }
+    .nav-pill { font-size: 10px; font-weight: 500; font-family: var(--mono); color: var(--success-tx); background: var(--success-bg); border: 1px solid var(--success-bd); border-radius: 4px; padding: 2px 7px; }
     .nav-space { flex: 1; }
-    .btn-nav {
-      font-size: 14px; font-weight: 400;
-      font-feature-settings: 'ss01';
-      color: var(--label);
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 6px 14px;
-      cursor: pointer;
-      display: flex; align-items: center; gap: 6px;
-      transition: border-color 0.15s, color 0.15s;
-    }
-    .btn-nav:hover { border-color: var(--purple-lt); color: var(--purple); }
-    .btn-nav svg { width: 14px; height: 14px; }
 
-    /* ─── Hero ───────────────────────────────────────────── */
-    .hero {
-      background: var(--white);
-      border-bottom: 1px solid var(--border);
-      padding: 80px 32px 72px;
-      text-align: center;
+    /* user chip */
+    .user-chip { display: none; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border: 1px solid var(--border); border-radius: 20px; cursor: pointer; transition: border-color 0.15s; }
+    .user-chip:hover { border-color: var(--purple-lt); }
+    .user-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+    .user-avatar-placeholder { width: 28px; height: 28px; border-radius: 50%; background: var(--purple); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #fff; }
+    .user-name { font-size: 13px; font-weight: 400; color: var(--label); }
+    .usage-badge { font-size: 10px; font-family: var(--mono); color: var(--body); background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 1px 6px; }
+
+    .btn-signin {
+      font-size: 13px; font-weight: 500; color: #fff;
+      background: var(--purple); border: none; border-radius: 4px;
+      padding: 8px 18px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+      transition: background 0.15s;
     }
+    .btn-signin:hover { background: var(--purple-h); }
+    .btn-signin svg { width: 16px; height: 16px; }
+
+    /* ── Hero ── */
+    .hero { background: var(--white); border-bottom: 1px solid var(--border); padding: 80px 32px 72px; text-align: center; }
     .hero-inner { max-width: 640px; margin: 0 auto; }
-
-    .hero-tag {
-      display: inline-flex; align-items: center; gap: 8px;
-      font-size: 12px; font-weight: 400;
-      color: var(--body);
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 4px 12px;
-      margin-bottom: 28px;
-    }
-    .hero-tag-dot {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: var(--success-tx);
-      flex-shrink: 0;
-    }
-
-    .hero h1 {
-      font-size: clamp(36px, 5.5vw, 52px);
-      font-weight: 300;
-      color: var(--heading);
-      line-height: 1.06;
-      letter-spacing: -1.1px;
-      margin-bottom: 20px;
-    }
+    .hero-tag { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 400; color: var(--body); background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 4px 12px; margin-bottom: 28px; }
+    .hero-tag-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success-tx); flex-shrink: 0; }
+    .hero h1 { font-size: clamp(34px, 5vw, 50px); font-weight: 300; color: var(--heading); line-height: 1.06; letter-spacing: -1.1px; margin-bottom: 20px; }
     .hero h1 em { font-style: normal; color: var(--purple); }
+    .hero p { font-size: 18px; font-weight: 300; color: var(--body); line-height: 1.55; max-width: 480px; margin: 0 auto 36px; }
+    .hero-stats { display: flex; align-items: center; justify-content: center; gap: 28px; flex-wrap: wrap; }
+    .stat { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--body); }
+    .stat svg { width: 14px; height: 14px; color: var(--purple); }
 
-    .hero p {
-      font-size: 18px; font-weight: 300;
-      color: var(--body);
-      line-height: 1.55;
-      max-width: 480px;
-      margin: 0 auto 36px;
+    /* ── Sign-in wall ── */
+    #signin-wall {
+      max-width: 420px; margin: 60px auto;
+      background: var(--white); border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: var(--shadow-a) 0 7px 14px -5px, var(--shadow-b) 0 3px 6px -3px;
+      padding: 40px 36px; text-align: center;
     }
-
-    .hero-stats {
-      display: flex; align-items: center; justify-content: center;
-      gap: 28px; flex-wrap: wrap;
-    }
-    .stat {
-      display: flex; align-items: center; gap: 6px;
-      font-size: 13px; font-weight: 400; color: var(--body);
-    }
-    .stat svg { width: 14px; height: 14px; color: var(--purple); flex-shrink: 0; }
-
-    /* ─── Key Banner ─────────────────────────────────────── */
-    #key-banner {
-      display: none;
-      background: var(--info-bg);
-      border-bottom: 1px solid var(--info-bd);
-      padding: 12px 32px;
-    }
-    .key-banner-inner {
-      max-width: 1080px; margin: 0 auto;
-      display: flex; align-items: center; gap: 12px;
-      cursor: pointer;
-    }
-    .key-banner-inner svg { width: 15px; height: 15px; color: var(--purple); flex-shrink: 0; }
-    .key-banner-text { font-size: 13px; font-weight: 400; color: var(--label); flex: 1; }
-    .key-banner-link {
-      font-size: 13px; font-weight: 500;
-      color: var(--purple);
-      white-space: nowrap;
-    }
-
-    /* ─── Main ───────────────────────────────────────────── */
-    .main {
-      max-width: 1080px;
-      margin: 0 auto;
-      padding: 40px 32px 80px;
-      display: grid;
-      grid-template-columns: 1fr 380px;
-      gap: 24px;
-      align-items: start;
-    }
-
-    /* ─── Card ───────────────────────────────────────────── */
-    .card {
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      box-shadow: var(--shadow-a) 0px 7px 14px -5px, var(--shadow-b) 0px 3px 6px -3px;
-    }
-    .card-head {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .card-title {
-      font-size: 14px; font-weight: 500;
-      color: var(--heading);
-      letter-spacing: -0.15px;
-    }
-    .card-meta {
-      font-size: 12px; font-family: var(--mono);
-      color: var(--body);
-    }
-    .card-body { padding: 20px; }
-
-    /* ─── Drop zone ──────────────────────────────────────── */
-    .drop-zone {
-      border: 1.5px dashed #c8d6e5;
-      border-radius: 6px;
-      padding: 24px 20px;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color 0.15s, background 0.15s;
+    .wall-icon { width: 52px; height: 52px; background: var(--info-bg); border: 1px solid var(--info-bd); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
+    .wall-icon svg { width: 24px; height: 24px; color: var(--purple); }
+    .wall-title { font-size: 20px; font-weight: 300; color: var(--heading); letter-spacing: -0.3px; margin-bottom: 8px; }
+    .wall-sub { font-size: 14px; font-weight: 300; color: var(--body); line-height: 1.6; margin-bottom: 28px; }
+    .btn-google {
+      width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 11px 20px; border: 1px solid var(--border); border-radius: 4px;
+      background: var(--white); cursor: pointer; font-size: 14px; font-weight: 400; color: var(--heading);
+      transition: border-color 0.15s, box-shadow 0.15s;
       margin-bottom: 16px;
     }
-    .drop-zone:hover, .drop-zone.drag-over {
-      border-color: var(--purple);
-      background: rgba(83,58,253,0.03);
+    .btn-google:hover { border-color: var(--purple-lt); box-shadow: 0 2px 8px var(--shadow-b); }
+    .btn-google svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .wall-note { font-size: 11px; font-family: var(--mono); color: var(--body); line-height: 1.6; }
+
+    /* ── Main ── */
+    .main { max-width: 1080px; margin: 0 auto; padding: 40px 32px 80px; display: grid; grid-template-columns: 1fr 360px; gap: 24px; align-items: start; }
+    #app-section { display: none; }
+
+    /* Usage bar */
+    .usage-bar {
+      background: var(--white); border: 1px solid var(--border); border-radius: 8px;
+      padding: 14px 18px; margin-bottom: 20px;
+      display: flex; align-items: center; gap: 14px;
     }
-    .dz-icon {
-      width: 38px; height: 38px;
-      margin: 0 auto 10px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      display: flex; align-items: center; justify-content: center;
-      color: var(--body);
-    }
+    .usage-label { font-size: 12px; font-family: var(--mono); color: var(--body); white-space: nowrap; }
+    .usage-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .usage-fill { height: 100%; background: var(--purple); border-radius: 2px; transition: width 0.4s; }
+    .usage-fill.warn { background: #f59e0b; }
+    .usage-fill.full { background: #ef4444; }
+    .usage-count { font-size: 11px; font-family: var(--mono); color: var(--body); white-space: nowrap; }
+
+    /* Card */
+    .card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-a) 0 7px 14px -5px, var(--shadow-b) 0 3px 6px -3px; }
+    .card-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .card-title { font-size: 14px; font-weight: 500; color: var(--heading); letter-spacing: -0.15px; }
+    .card-meta { font-size: 12px; font-family: var(--mono); color: var(--body); }
+    .card-body { padding: 20px; }
+
+    /* Drop zone */
+    .drop-zone { border: 1.5px dashed #c8d6e5; border-radius: 6px; padding: 24px 20px; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; margin-bottom: 16px; }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: var(--purple); background: rgba(83,58,253,0.03); }
+    .dz-icon { width: 38px; height: 38px; margin: 0 auto 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--body); }
     .dz-icon svg { width: 18px; height: 18px; }
-    .dz-label { font-size: 13px; font-weight: 400; color: var(--label); margin-bottom: 3px; }
+    .dz-label { font-size: 13px; color: var(--label); margin-bottom: 3px; }
     .dz-label strong { color: var(--purple); font-weight: 500; }
     .dz-sub { font-size: 11px; font-family: var(--mono); color: var(--body); }
-
     #file-input { display: none; }
 
-    .or-divider {
-      text-align: center;
-      font-size: 11px; font-family: var(--mono);
-      color: var(--body);
-      margin: 0 0 16px;
-      position: relative;
-    }
-    .or-divider::before, .or-divider::after {
-      content: '';
-      position: absolute; top: 50%;
-      width: calc(50% - 22px); height: 1px;
-      background: var(--border);
-    }
-    .or-divider::before { left: 0; }
-    .or-divider::after { right: 0; }
+    .or-divider { text-align: center; font-size: 11px; font-family: var(--mono); color: var(--body); margin: 0 0 16px; position: relative; }
+    .or-divider::before, .or-divider::after { content: ''; position: absolute; top: 50%; width: calc(50% - 22px); height: 1px; background: var(--border); }
+    .or-divider::before { left: 0; } .or-divider::after { right: 0; }
 
-    textarea {
-      width: 100%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 12px 14px;
-      font-family: var(--mono);
-      font-size: 12px; font-weight: 400;
-      color: var(--heading);
-      resize: vertical;
-      min-height: 130px;
-      outline: none;
-      transition: border-color 0.15s, box-shadow 0.15s;
-      line-height: 1.6;
-    }
+    textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; font-family: var(--mono); font-size: 12px; color: var(--heading); resize: vertical; min-height: 130px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; line-height: 1.6; }
     textarea::placeholder { color: #a0aec0; }
-    textarea:focus {
-      border-color: var(--purple);
-      box-shadow: 0 0 0 3px rgba(83,58,253,0.12);
-      background: var(--white);
-    }
+    textarea:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(83,58,253,0.1); background: var(--white); }
 
-    .action-row {
-      display: flex; align-items: center;
-      justify-content: space-between;
-      margin-top: 14px; gap: 10px;
-    }
+    .action-row { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; gap: 10px; }
     .char-count { font-size: 11px; font-family: var(--mono); color: var(--body); }
 
-    .btn-primary {
-      font-size: 14px; font-weight: 400;
-      font-feature-settings: 'ss01';
-      color: #fff;
-      background: var(--purple);
-      border: none; border-radius: 4px;
-      padding: 9px 22px;
-      cursor: pointer;
-      display: flex; align-items: center; gap: 8px;
-      transition: background 0.15s;
-      white-space: nowrap;
-    }
+    .btn-primary { font-size: 14px; font-weight: 400; font-feature-settings: 'ss01'; color: #fff; background: var(--purple); border: none; border-radius: 4px; padding: 9px 22px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.15s; white-space: nowrap; }
     .btn-primary:hover:not(:disabled) { background: var(--purple-h); }
-    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-primary svg { width: 14px; height: 14px; }
-
     @keyframes spin { to { transform: rotate(360deg); } }
-    .spinner {
-      width: 14px; height: 14px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 0.65s linear infinite;
-      flex-shrink: 0;
-    }
+    .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.65s linear infinite; flex-shrink: 0; }
 
-    /* ─── Error ──────────────────────────────────────────── */
-    .err-box {
-      display: none;
-      background: var(--err-bg);
-      border: 1px solid var(--err-bd);
-      border-radius: 6px;
-      padding: 11px 14px;
-      margin-top: 14px;
-      font-size: 13px; color: var(--err-tx);
-      display: none; align-items: flex-start; gap: 9px;
-    }
+    .err-box { display: none; background: var(--err-bg); border: 1px solid var(--err-bd); border-radius: 6px; padding: 11px 14px; margin-top: 14px; font-size: 13px; color: var(--err-tx); align-items: flex-start; gap: 9px; }
     .err-box svg { width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px; }
 
-    /* ─── Sidebar info card ──────────────────────────────── */
-    .info-card {
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-    }
+    /* Sidebar */
+    .info-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
     .info-section { padding: 18px 20px; border-bottom: 1px solid var(--border); }
     .info-section:last-child { border-bottom: none; }
-    .info-label {
-      font-size: 11px; font-weight: 500;
-      font-family: var(--mono);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--body);
-      margin-bottom: 10px;
-    }
-    .info-item {
-      display: flex; align-items: flex-start; gap: 10px;
-      margin-bottom: 10px;
-    }
+    .info-label { font-size: 11px; font-weight: 500; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--body); margin-bottom: 10px; }
+    .info-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
     .info-item:last-child { margin-bottom: 0; }
-    .info-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--purple);
-      margin-top: 6px; flex-shrink: 0;
-    }
-    .info-text { font-size: 13px; font-weight: 400; color: var(--label); line-height: 1.5; }
+    .info-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--purple); margin-top: 6px; flex-shrink: 0; }
+    .info-text { font-size: 13px; font-weight: 300; color: var(--label); line-height: 1.5; }
+    .privacy-badge { display: flex; align-items: flex-start; gap: 8px; background: var(--success-bg); border: 1px solid var(--success-bd); border-radius: 4px; padding: 10px 12px; }
+    .privacy-badge svg { width: 14px; height: 14px; color: var(--success-tx); flex-shrink: 0; margin-top: 1px; }
+    .privacy-badge-text { font-size: 12px; color: var(--success-tx); line-height: 1.5; }
 
-    .privacy-badge {
-      display: flex; align-items: center; gap: 8px;
-      background: var(--success-bg);
-      border: 1px solid var(--success-bd);
-      border-radius: 4px;
-      padding: 8px 12px;
-    }
-    .privacy-badge svg { width: 14px; height: 14px; color: var(--success-tx); flex-shrink: 0; }
-    .privacy-badge-text { font-size: 12px; font-weight: 400; color: var(--success-tx); line-height: 1.4; }
-
-    /* ─── Results ────────────────────────────────────────── */
+    /* Results */
     #results { display: none; }
-
-    .summary-grid {
-      display: grid;
-      grid-template-columns: 1fr 1px 1fr 1px 1fr;
-      gap: 0;
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      box-shadow: var(--shadow-a) 0px 7px 14px -5px, var(--shadow-b) 0px 3px 6px -3px;
-      margin-bottom: 20px;
-      overflow: hidden;
-    }
+    .summary-grid { display: grid; grid-template-columns: 1fr 1px 1fr 1px 1fr; background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-a) 0 7px 14px -5px, var(--shadow-b) 0 3px 6px -3px; margin-bottom: 20px; overflow: hidden; }
     .summary-cell { padding: 20px 24px; }
     .summary-divider { background: var(--border); }
-    .summary-val {
-      font-size: 26px; font-weight: 300;
-      color: var(--heading);
-      letter-spacing: -0.5px;
-      line-height: 1; margin-bottom: 5px;
-    }
-    .summary-val.red { color: #c0152b; }
-    .summary-val.green { color: var(--success-tx); }
+    .summary-val { font-size: 26px; font-weight: 300; color: var(--heading); letter-spacing: -0.5px; line-height: 1; margin-bottom: 5px; }
+    .summary-val.red { color: #c0152b; } .summary-val.green { color: var(--success-tx); }
     .summary-key { font-size: 12px; font-family: var(--mono); color: var(--body); }
 
-    /* Flags */
-    .flags-wrap { margin-bottom: 20px; }
-    .flag-item {
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 14px 16px;
-      display: flex; align-items: flex-start; gap: 12px;
-      margin-bottom: 8px;
-      box-shadow: var(--shadow-b) 0px 1px 3px;
-      transition: box-shadow 0.15s, transform 0.1s;
-    }
-    .flag-item:hover {
-      box-shadow: var(--shadow-a) 0px 4px 10px -4px, var(--shadow-b) 0px 2px 4px;
-      transform: translateY(-1px);
-    }
+    .flag-item { background: var(--white); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px; box-shadow: var(--shadow-b) 0 1px 3px; transition: box-shadow 0.15s, transform 0.1s; }
+    .flag-item:hover { box-shadow: var(--shadow-a) 0 4px 10px -4px, var(--shadow-b) 0 2px 4px; transform: translateY(-1px); }
     .flag-item:last-child { margin-bottom: 0; }
-
-    .flag-badge {
-      font-size: 10px; font-weight: 500;
-      font-family: var(--mono);
-      padding: 3px 8px;
-      border-radius: 4px;
-      white-space: nowrap; flex-shrink: 0;
-    }
+    .flag-badge { font-size: 10px; font-weight: 500; font-family: var(--mono); padding: 3px 8px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; }
     .flag-badge.overcharge { background: var(--err-bg); color: var(--err-tx); border: 1px solid var(--err-bd); }
     .flag-badge.duplicate  { background: var(--warn-bg); color: var(--warn-tx); border: 1px solid var(--warn-bd); }
     .flag-badge.verify     { background: var(--info-bg); color: var(--purple); border: 1px solid var(--info-bd); }
     .flag-badge.ok         { background: var(--success-bg); color: var(--success-tx); border: 1px solid var(--success-bd); }
-
     .flag-body { flex: 1; min-width: 0; }
-    .flag-title {
-      font-size: 14px; font-weight: 500;
-      color: var(--heading);
-      letter-spacing: -0.15px;
-      margin-bottom: 3px;
-    }
+    .flag-title { font-size: 14px; font-weight: 500; color: var(--heading); letter-spacing: -0.15px; margin-bottom: 3px; }
     .flag-desc { font-size: 13px; font-weight: 300; color: var(--body); line-height: 1.5; }
-    .flag-amount {
-      font-size: 13px; font-weight: 500;
-      font-family: var(--mono);
-      white-space: nowrap; flex-shrink: 0;
-    }
-    .flag-amount.red { color: #c0152b; }
-    .flag-amount.amber { color: var(--warn-tx); }
-    .flag-amount.green { color: var(--success-tx); }
+    .flag-amount { font-size: 13px; font-weight: 500; font-family: var(--mono); white-space: nowrap; flex-shrink: 0; }
+    .flag-amount.red { color: #c0152b; } .flag-amount.amber { color: var(--warn-tx); } .flag-amount.green { color: var(--success-tx); }
 
-    /* Dispute letter */
-    .letter-card { }
-    .letter-head {
-      padding: 14px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-    }
+    .letter-head { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
     .letter-body { padding: 20px; }
+    pre.letter { font-family: var(--mono); font-size: 12px; color: var(--label); line-height: 1.8; white-space: pre-wrap; word-break: break-word; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 16px; max-height: 360px; overflow-y: auto; }
 
-    pre.letter {
-      font-family: var(--mono);
-      font-size: 12px; font-weight: 400;
-      color: var(--label);
-      line-height: 1.8;
-      white-space: pre-wrap; word-break: break-word;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 16px;
-      max-height: 360px;
-      overflow-y: auto;
-    }
-
-    .btn-ghost {
-      font-size: 12px; font-weight: 400;
-      font-feature-settings: 'ss01';
-      color: var(--label);
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 5px 12px;
-      cursor: pointer;
-      display: flex; align-items: center; gap: 5px;
-      transition: border-color 0.15s, color 0.15s;
-    }
+    .btn-ghost { font-size: 12px; color: var(--label); background: transparent; border: 1px solid var(--border); border-radius: 4px; padding: 5px 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: border-color 0.15s, color 0.15s; }
     .btn-ghost:hover { border-color: var(--purple-lt); color: var(--purple); }
     .btn-ghost svg { width: 12px; height: 12px; }
 
-    /* ─── Skeleton ───────────────────────────────────────── */
-    @keyframes shimmer {
-      0%   { background-position: -600px 0; }
-      100% { background-position: 600px 0; }
-    }
-    .skel {
-      background: linear-gradient(90deg, #f0f4f8 25%, #e8eff5 50%, #f0f4f8 75%);
-      background-size: 1200px 100%;
-      animation: shimmer 1.5s infinite;
-      border-radius: 4px;
-    }
+    @keyframes shimmer { 0% { background-position: -600px 0; } 100% { background-position: 600px 0; } }
+    .skel { background: linear-gradient(90deg, #f0f4f8 25%, #e8eff5 50%, #f0f4f8 75%); background-size: 1200px 100%; animation: shimmer 1.5s infinite; border-radius: 4px; }
 
-    /* ─── Modal ──────────────────────────────────────────── */
-    .overlay {
-      position: fixed; inset: 0;
-      background: rgba(6,27,49,0.6);
-      backdrop-filter: blur(3px);
-      -webkit-backdrop-filter: blur(3px);
-      z-index: 100;
-      display: none; align-items: center; justify-content: center;
-      padding: 20px;
-    }
-    .overlay.open { display: flex; }
+    /* User dropdown */
+    .user-menu { display: none; position: absolute; top: 64px; right: 32px; background: var(--white); border: 1px solid var(--border); border-radius: 6px; box-shadow: rgba(3,3,39,0.15) 0 8px 20px -4px; min-width: 200px; z-index: 100; overflow: hidden; }
+    .user-menu.open { display: block; }
+    .user-menu-item { padding: 10px 16px; font-size: 13px; color: var(--label); cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.1s; }
+    .user-menu-item:hover { background: var(--bg); }
+    .user-menu-item svg { width: 14px; height: 14px; color: var(--body); }
+    .user-menu-divider { height: 1px; background: var(--border); }
+    .user-menu-header { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+    .user-menu-name { font-size: 13px; font-weight: 500; color: var(--heading); }
+    .user-menu-email { font-size: 11px; font-family: var(--mono); color: var(--body); margin-top: 1px; }
 
-    .modal {
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      width: 100%; max-width: 420px;
-      box-shadow: rgba(3,3,39,0.25) 0px 14px 21px -14px, rgba(0,0,0,0.1) 0px 8px 17px -8px;
-    }
-    .modal-head {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .modal-title { font-size: 15px; font-weight: 500; color: var(--heading); }
-    .modal-close {
-      width: 28px; height: 28px;
-      background: transparent;
-      border: none; border-radius: 4px;
-      color: var(--body); cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: background 0.15s, color 0.15s;
-    }
-    .modal-close:hover { background: var(--bg); color: var(--heading); }
-    .modal-close svg { width: 14px; height: 14px; }
-    .modal-body { padding: 20px; }
+    /* Dark footer */
+    .dark-band { background: var(--brand-dark); padding: 40px 32px; text-align: center; }
+    .dark-band p { font-size: 13px; font-weight: 300; color: rgba(255,255,255,0.55); max-width: 600px; margin: 0 auto; line-height: 1.7; }
+    .dark-band span { color: rgba(255,255,255,0.85); }
 
-    .form-label {
-      display: block;
-      font-size: 13px; font-weight: 400;
-      color: var(--label);
-      margin-bottom: 7px;
-    }
-    .form-input {
-      width: 100%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 9px 12px;
-      font-family: var(--mono);
-      font-size: 13px;
-      color: var(--heading);
-      outline: none;
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    .form-input::placeholder { color: #a0aec0; }
-    .form-input:focus {
-      border-color: var(--purple);
-      box-shadow: 0 0 0 3px rgba(83,58,253,0.1);
-    }
-    .form-help {
-      font-size: 12px; font-weight: 300; color: var(--body);
-      margin-top: 9px; line-height: 1.5;
-    }
-    .form-help a { color: var(--purple); text-decoration: none; }
-    .form-help a:hover { text-decoration: underline; }
-
-    .modal-foot {
-      padding: 14px 20px;
-      border-top: 1px solid var(--border);
-      display: flex; justify-content: flex-end; gap: 8px;
-    }
-
-    /* ─── Dark brand section ─────────────────────────────── */
-    .dark-band {
-      background: var(--brand-dark);
-      padding: 40px 32px;
-      text-align: center;
-    }
-    .dark-band p {
-      font-size: 14px; font-weight: 300;
-      color: rgba(255,255,255,0.6);
-      max-width: 600px; margin: 0 auto;
-      line-height: 1.6;
-    }
-    .dark-band span { color: rgba(255,255,255,0.9); }
-
-    /* ─── Responsive ─────────────────────────────────────── */
-    @media (max-width: 840px) {
-      .main { grid-template-columns: 1fr; }
-      .sidebar { display: none; }
-    }
-    @media (max-width: 640px) {
-      .hero { padding: 52px 20px 48px; }
-      .main { padding: 24px 20px 60px; }
-      nav { padding: 0 20px; }
-      #key-banner { padding: 10px 20px; }
-      .summary-grid { grid-template-columns: 1fr; }
-      .summary-divider { display: none; }
-      .dark-band { padding: 32px 20px; }
-    }
+    /* Responsive */
+    @media (max-width: 840px) { .main { grid-template-columns: 1fr; } .sidebar { display: none; } }
+    @media (max-width: 640px) { .hero { padding: 52px 20px 48px; } .main { padding: 24px 20px 60px; } nav { padding: 0 20px; } .summary-grid { grid-template-columns: 1fr; } .summary-divider { display: none; } }
   </style>
 </head>
 <body>
@@ -611,258 +253,311 @@
     </a>
     <span class="nav-pill">FREE</span>
     <div class="nav-space"></div>
-    <button class="btn-nav" onclick="openKeyModal()">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M10.586 2a3.5 3.5 0 0 1 0 4.95L4.95 12.586A2 2 0 0 1 3.536 13.5H2.5a1 1 0 0 1-1-1V11.5a2 2 0 0 1 .586-1.414l5.636-5.636A3.5 3.5 0 0 1 10.586 2z"/>
-        <circle cx="11" cy="5" r="0.75" fill="currentColor" stroke="none"/>
-      </svg>
-      API Key
+
+    <!-- signed-out -->
+    <button class="btn-signin" id="nav-signin" onclick="signInWithGoogle()">
+      <svg viewBox="0 0 18 18" fill="none"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 6.294C4.672 4.167 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+      Continue with Google
     </button>
+
+    <!-- signed-in -->
+    <div class="user-chip" id="user-chip" onclick="toggleUserMenu()">
+      <div class="user-avatar-placeholder" id="user-avatar-placeholder">T</div>
+      <img class="user-avatar" id="user-avatar" src="" alt="" style="display:none"/>
+      <span class="user-name" id="user-display-name">User</span>
+      <span class="usage-badge" id="nav-usage">0/5</span>
+    </div>
+
+    <!-- dropdown -->
+    <div class="user-menu" id="user-menu">
+      <div class="user-menu-header">
+        <div class="user-menu-name" id="menu-name"></div>
+        <div class="user-menu-email" id="menu-email"></div>
+      </div>
+      <div class="user-menu-item" onclick="signOut()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h3M10.5 11 14 8l-3.5-3M14 8H6"/></svg>
+        Sign out
+      </div>
+    </div>
   </div>
 </nav>
-
-<!-- Key Banner -->
-<div id="key-banner">
-  <div class="key-banner-inner" onclick="openKeyModal()">
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="8" cy="8" r="7"/><path d="M8 5v3.5M8 11h.01"/>
-    </svg>
-    <span class="key-banner-text">Add your Anthropic API key to start analyzing bills — it stays in your browser only.</span>
-    <span class="key-banner-link">Add key →</span>
-  </div>
-</div>
 
 <!-- Hero -->
 <section class="hero">
   <div class="hero-inner">
-    <div class="hero-tag">
-      <span class="hero-tag-dot"></span>
-      Medical billing errors occur in up to 80% of bills
-    </div>
+    <div class="hero-tag"><span class="hero-tag-dot"></span>Medical billing errors occur in up to 80% of bills</div>
     <h1>Stop paying for<br><em>charges you didn't owe</em></h1>
     <p>Paste your bill or upload a PDF. AI flags every error, explains each charge, and drafts your dispute letter in seconds.</p>
     <div class="hero-stats">
       <div class="stat">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1l2 4.5h4.5l-3.5 2.8 1.3 4.7L8 10.5l-4.3 2.5 1.3-4.7L1.5 5.5H6z"/></svg>
-        AI-powered analysis
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="7"/><path d="M5.5 8.5l2 2 3-3.5"/></svg>
+        No API key needed
       </div>
       <div class="stat">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 8.5l2.5 2.5 4.5-5"/><circle cx="8" cy="8" r="7"/></svg>
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5 2 4.5v4c0 3.3 2.5 5.4 6 6 3.5-.6 6-2.7 6-6v-4L8 1.5z"/></svg>
         Dispute letters included
       </div>
       <div class="stat">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zM8 4v4l3 1.5"/></svg>
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zM8 4v4l2.5 1.5"/></svg>
         Results in under 30s
       </div>
     </div>
   </div>
 </section>
 
-<!-- Main layout -->
-<main class="main">
+<!-- Main -->
+<div style="max-width:1080px;margin:0 auto;padding:0 32px">
 
-  <!-- Left: upload + results -->
-  <div>
-    <!-- Upload card -->
-    <div class="card" style="margin-bottom:20px">
-      <div class="card-head">
-        <span class="card-title">Your bill</span>
-        <span class="card-meta" id="file-name"></span>
-      </div>
-      <div class="card-body">
-        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-          <div class="dz-icon">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10 13V4m-4 5 4-4 4 4"/><path d="M3 15.5h14"/>
-            </svg>
+  <!-- Sign-in wall -->
+  <div id="signin-wall">
+    <div class="wall-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+      </svg>
+    </div>
+    <div class="wall-title">Sign in to analyze your bill</div>
+    <div class="wall-sub">Free account. No credit card. 5 analyses per month included — sign in with Google and start immediately.</div>
+    <button class="btn-google" onclick="signInWithGoogle()">
+      <svg viewBox="0 0 18 18" fill="none"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 6.294C4.672 4.167 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+      Continue with Google
+    </button>
+    <div class="wall-note">Your bill data is never stored on our servers.<br>Analysis powered by Google Gemini.</div>
+  </div>
+
+  <!-- App section (after sign-in) -->
+  <div id="app-section">
+    <div class="main">
+      <div>
+        <!-- Usage bar -->
+        <div class="usage-bar">
+          <span class="usage-label">This month</span>
+          <div class="usage-track"><div class="usage-fill" id="usage-fill" style="width:0%"></div></div>
+          <span class="usage-count" id="usage-count">0 / 5 analyses</span>
+        </div>
+
+        <!-- Upload card -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-head">
+            <span class="card-title">Your bill</span>
+            <span class="card-meta" id="file-name"></span>
           </div>
-          <p class="dz-label">Drop PDF here or <strong>browse</strong></p>
-          <p class="dz-sub">PDF, up to 20MB</p>
+          <div class="card-body">
+            <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+              <div class="dz-icon">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10 13V4m-4 5 4-4 4 4"/><path d="M3 15.5h14"/>
+                </svg>
+              </div>
+              <p class="dz-label">Drop PDF here or <strong>browse</strong></p>
+              <p class="dz-sub">PDF, up to 15MB</p>
+            </div>
+            <input type="file" id="file-input" accept=".pdf"/>
+            <div class="or-divider">or paste text</div>
+            <textarea id="bill-text" placeholder="Paste your EOB, itemized bill, or any charge description...&#10;&#10;Example:&#10;  Room &amp; Board (3 days)  — $7,200&#10;  CBC Lab Panel           — $840&#10;  Physician Visit         — $1,200"></textarea>
+            <div class="action-row">
+              <span class="char-count" id="char-count">0 chars</span>
+              <button class="btn-primary" id="analyze-btn" onclick="analyze()" disabled>
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="7" cy="7" r="5"/><path d="m13.5 13.5-3-3"/>
+                </svg>
+                Analyze bill
+              </button>
+            </div>
+            <div class="err-box" id="err-box">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="7"/><path d="M8 5v3M8 11h.01"/></svg>
+              <span id="err-msg">Something went wrong.</span>
+            </div>
+          </div>
         </div>
-        <input type="file" id="file-input" accept=".pdf"/>
 
-        <div class="or-divider">or paste text</div>
-
-        <textarea id="bill-text" placeholder="Paste your EOB, itemized bill, or any charge description here...
-&#10;Example:
-  Room &amp; Board (3 days)  — $7,200
-  CBC Lab Panel           — $840
-  Physician Visit         — $1,200
-  Bandages x4             — $320"></textarea>
-
-        <div class="action-row">
-          <span class="char-count" id="char-count">0 chars</span>
-          <button class="btn-primary" id="analyze-btn" onclick="analyze()" disabled>
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="7" cy="7" r="5"/><path d="m13.5 13.5-3-3"/>
-            </svg>
-            Analyze bill
-          </button>
-        </div>
-
-        <div class="err-box" id="err-box">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="8" cy="8" r="7"/><path d="M8 5v3M8 11h.01"/>
-          </svg>
-          <span id="err-msg">Something went wrong.</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Results -->
-    <div id="results">
-
-      <!-- Summary -->
-      <div class="summary-grid">
-        <div class="summary-cell">
-          <div class="summary-val red" id="s-overcharge">—</div>
-          <div class="summary-key">potential overcharge</div>
-        </div>
-        <div class="summary-divider"></div>
-        <div class="summary-cell">
-          <div class="summary-val" id="s-flags">—</div>
-          <div class="summary-key">items flagged</div>
-        </div>
-        <div class="summary-divider"></div>
-        <div class="summary-cell">
-          <div class="summary-val green" id="s-savings">—</div>
-          <div class="summary-key">estimated savings</div>
-        </div>
-      </div>
-
-      <!-- Flags -->
-      <div class="card" style="margin-bottom:20px">
-        <div class="card-head">
-          <span class="card-title">Findings</span>
-          <span class="card-meta" id="flag-count"></span>
-        </div>
-        <div class="card-body" style="padding:12px 14px">
-          <div id="flags-list"></div>
+        <!-- Results -->
+        <div id="results">
+          <div class="summary-grid">
+            <div class="summary-cell"><div class="summary-val red" id="s-overcharge">—</div><div class="summary-key">potential overcharge</div></div>
+            <div class="summary-divider"></div>
+            <div class="summary-cell"><div class="summary-val" id="s-flags">—</div><div class="summary-key">items flagged</div></div>
+            <div class="summary-divider"></div>
+            <div class="summary-cell"><div class="summary-val green" id="s-savings">—</div><div class="summary-key">estimated savings</div></div>
+          </div>
+          <div class="card" style="margin-bottom:20px">
+            <div class="card-head"><span class="card-title">Findings</span><span class="card-meta" id="flag-count"></span></div>
+            <div class="card-body" style="padding:12px 14px"><div id="flags-list"></div></div>
+          </div>
+          <div class="card">
+            <div class="letter-head">
+              <span class="card-title">Dispute letter</span>
+              <button class="btn-ghost" onclick="copyLetter()">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="8" height="8" rx="1.5"/><path d="M10 6V4.5A1.5 1.5 0 0 0 8.5 3H4A1.5 1.5 0 0 0 2.5 4.5V9A1.5 1.5 0 0 0 4 10.5h1.5"/></svg>
+                Copy
+              </button>
+            </div>
+            <div class="letter-body"><pre class="letter" id="dispute-letter"></pre></div>
+          </div>
         </div>
       </div>
 
-      <!-- Dispute Letter -->
-      <div class="card letter-card">
-        <div class="letter-head">
-          <span class="card-title">Dispute letter</span>
-          <button class="btn-ghost" onclick="copyLetter()">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="6" y="6" width="8" height="8" rx="1.5"/><path d="M10 6V4.5A1.5 1.5 0 0 0 8.5 3H4A1.5 1.5 0 0 0 2.5 4.5V9A1.5 1.5 0 0 0 4 10.5h1.5"/>
-            </svg>
-            Copy
-          </button>
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="info-card">
+          <div class="info-section">
+            <div class="info-label">How it works</div>
+            <div class="info-item"><span class="info-dot"></span><span class="info-text">Sign in with Google — free, no credit card</span></div>
+            <div class="info-item"><span class="info-dot"></span><span class="info-text">Upload your bill or paste the charges</span></div>
+            <div class="info-item"><span class="info-dot"></span><span class="info-text">Gemini AI cross-references each line against typical rates and billing codes</span></div>
+            <div class="info-item"><span class="info-dot"></span><span class="info-text">Download your ready-to-send dispute letter</span></div>
+          </div>
+          <div class="info-section">
+            <div class="info-label">What we catch</div>
+            <div class="info-item"><span class="info-dot" style="background:#c0152b"></span><span class="info-text">Overcharged line items above typical rates</span></div>
+            <div class="info-item"><span class="info-dot" style="background:#92550a"></span><span class="info-text">Duplicate charges for the same service</span></div>
+            <div class="info-item"><span class="info-dot" style="background:var(--purple)"></span><span class="info-text">Unbundled procedures that should be one charge</span></div>
+            <div class="info-item"><span class="info-dot" style="background:var(--success-tx)"></span><span class="info-text">Charges not matching your procedure codes</span></div>
+          </div>
+          <div class="info-section">
+            <div class="privacy-badge">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5 2 4.5v4c0 3.3 2.5 5.4 6 6 3.5-.6 6-2.7 6-6v-4L8 1.5z"/></svg>
+              <div class="privacy-badge-text">Bill data is sent to Gemini for analysis only. We never store your medical information.</div>
+            </div>
+          </div>
         </div>
-        <div class="letter-body">
-          <pre class="letter" id="dispute-letter"></pre>
-        </div>
-      </div>
-
-    </div>
-  </div><!-- /left -->
-
-  <!-- Right: sidebar -->
-  <aside class="sidebar">
-    <div class="info-card">
-      <div class="info-section">
-        <div class="info-label">How it works</div>
-        <div class="info-item"><span class="info-dot"></span><span class="info-text">Upload your bill or paste the charges</span></div>
-        <div class="info-item"><span class="info-dot"></span><span class="info-text">AI cross-references each line against typical rates and billing codes</span></div>
-        <div class="info-item"><span class="info-dot"></span><span class="info-text">Review flagged overcharges, duplicates, and unbundled fees</span></div>
-        <div class="info-item"><span class="info-dot"></span><span class="info-text">Download your ready-to-send dispute letter</span></div>
-      </div>
-      <div class="info-section">
-        <div class="info-label">What we catch</div>
-        <div class="info-item"><span class="info-dot" style="background:#c0152b"></span><span class="info-text">Overcharged line items above typical rates</span></div>
-        <div class="info-item"><span class="info-dot" style="background:#92550a"></span><span class="info-text">Duplicate charges for the same service</span></div>
-        <div class="info-item"><span class="info-dot" style="background:var(--purple)"></span><span class="info-text">Unbundled procedures that should be one charge</span></div>
-        <div class="info-item"><span class="info-dot" style="background:var(--success-tx)"></span><span class="info-text">Charges not matching your procedure codes</span></div>
-      </div>
-      <div class="info-section">
-        <div class="privacy-badge">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M8 1.5 2 4.5v4c0 3.3 2.5 5.4 6 6 3.5-.6 6-2.7 6-6v-4L8 1.5z"/>
-          </svg>
-          <div class="privacy-badge-text">Your bill never leaves your browser. Analysis runs directly against the Anthropic API using your own key.</div>
-        </div>
-      </div>
-    </div>
-  </aside>
-
-</main>
-
-<!-- Dark footer band -->
-<div class="dark-band">
-  <p>MedBill is an <span>AI-assisted tool</span>, not legal or medical advice. Always consult a patient advocate or attorney for complex billing disputes. Analysis accuracy depends on the completeness of your uploaded bill.</p>
-</div>
-
-<!-- Modal -->
-<div class="overlay" id="key-modal">
-  <div class="modal">
-    <div class="modal-head">
-      <span class="modal-title">Anthropic API Key</span>
-      <button class="modal-close" onclick="closeKeyModal()">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 4l8 8M12 4l-8 8"/>
-        </svg>
-      </button>
-    </div>
-    <div class="modal-body">
-      <label class="form-label" for="api-key-input">Your key</label>
-      <input class="form-input" id="api-key-input" type="password" placeholder="sk-ant-..."/>
-      <p class="form-help">
-        Stored in your browser only — never sent to our servers.
-        Get a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.
-      </p>
-    </div>
-    <div class="modal-foot">
-      <button class="btn-ghost" onclick="closeKeyModal()">Cancel</button>
-      <button class="btn-primary" onclick="saveKey()">Save key</button>
+      </aside>
     </div>
   </div>
 </div>
 
+<div class="dark-band">
+  <p>MedBill is an <span>AI-assisted tool</span>, not legal or medical advice. Always consult a patient advocate or attorney for complex billing disputes. Free plan: 5 analyses/month per account.</p>
+</div>
+
+<!-- Firebase SDKs -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey:            "AIzaSyA65t2AjwcaiiSpu-IIyBaB0z8wcJOQgvc",
+    authDomain:        "hermez-fdff9.firebaseapp.com",
+    projectId:         "hermez-fdff9",
+    storageBucket:     "hermez-fdff9.firebasestorage.app",
+    messagingSenderId: "362560270479",
+    appId:             "1:362560270479:web:44d66b8a48beaecca940fa",
+  };
+
+  const fbApp    = initializeApp(firebaseConfig);
+  const auth     = getAuth(fbApp);
+  const provider = new GoogleAuthProvider();
+
+  // expose to window for button handlers
+  window._fbAuth     = auth;
+  window._fbProvider = provider;
+  window._fbSignOut  = () => signOut(auth);
+
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      window._fbUser = user;
+      window._fbToken = await user.getIdToken();
+      showApp(user);
+      loadUsage();
+    } else {
+      window._fbUser  = null;
+      window._fbToken = null;
+      showWall();
+    }
+  });
+</script>
+
 <script>
-/* ── State ─────────────────────────────────────── */
+/* ── Auth UI ─────────────────────────────────── */
+function signInWithGoogle() {
+  window._fbAuth.signInWithPopup(window._fbProvider).catch(e => {
+    console.error(e);
+    showErr("Sign-in failed: " + e.message);
+  });
+}
+function signOut() {
+  window._fbSignOut();
+  toggleUserMenu(false);
+}
+function toggleUserMenu(force) {
+  const m = document.getElementById('user-menu');
+  const open = force !== undefined ? force : !m.classList.contains('open');
+  m.classList.toggle('open', open);
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#user-chip') && !e.target.closest('#user-menu'))
+    toggleUserMenu(false);
+});
+
+function showApp(user) {
+  document.getElementById('signin-wall').style.display = 'none';
+  document.getElementById('app-section').style.display = 'block';
+  document.getElementById('nav-signin').style.display = 'none';
+  const chip = document.getElementById('user-chip');
+  chip.style.display = 'flex';
+
+  const initials = (user.displayName || user.email || 'U').charAt(0).toUpperCase();
+  document.getElementById('user-avatar-placeholder').textContent = initials;
+  if (user.photoURL) {
+    const img = document.getElementById('user-avatar');
+    img.src = user.photoURL;
+    img.style.display = 'block';
+    document.getElementById('user-avatar-placeholder').style.display = 'none';
+  }
+  document.getElementById('user-display-name').textContent = (user.displayName || user.email || '').split(' ')[0];
+  document.getElementById('menu-name').textContent = user.displayName || '';
+  document.getElementById('menu-email').textContent = user.email || '';
+}
+
+function showWall() {
+  document.getElementById('signin-wall').style.display = 'block';
+  document.getElementById('app-section').style.display = 'none';
+  document.getElementById('nav-signin').style.display = 'flex';
+  document.getElementById('user-chip').style.display = 'none';
+}
+
+/* ── Usage ───────────────────────────────────── */
+async function loadUsage() {
+  try {
+    const token = await window._fbUser.getIdToken(true);
+    window._fbToken = token;
+    const res = await fetch('/usage', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (!res.ok) return;
+    const u = await res.json();
+    updateUsageUI(u.count, u.limit);
+  } catch(e) { console.warn('Usage fetch failed', e); }
+}
+
+function updateUsageUI(count, limit) {
+  const pct = Math.min(100, (count / limit) * 100);
+  const fill = document.getElementById('usage-fill');
+  fill.style.width = pct + '%';
+  fill.className = 'usage-fill' + (pct >= 100 ? ' full' : pct >= 80 ? ' warn' : '');
+  document.getElementById('usage-count').textContent = `${count} / ${limit} analyses`;
+  document.getElementById('nav-usage').textContent = `${count}/${limit}`;
+}
+
+/* ── Bill input ──────────────────────────────── */
 let billText = '';
-let apiKey   = localStorage.getItem('medbill_key') || '';
-
-/* ── Init ──────────────────────────────────────── */
-window.addEventListener('DOMContentLoaded', () => {
-  checkBanner();
-
+document.addEventListener('DOMContentLoaded', () => {
   const ta = document.getElementById('bill-text');
   ta.addEventListener('input', () => {
     billText = ta.value.trim();
     document.getElementById('char-count').textContent = ta.value.length.toLocaleString() + ' chars';
-    setAnalyzeBtn(billText.length > 20);
+    document.getElementById('analyze-btn').disabled = billText.length < 20;
   });
-
-  // DnD
   const dz = document.getElementById('drop-zone');
   dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
   dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
   dz.addEventListener('drop',      e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
   document.getElementById('file-input').addEventListener('change', e => e.target.files[0] && handleFile(e.target.files[0]));
-
-  if (apiKey) document.getElementById('api-key-input').value = apiKey;
 });
 
-function checkBanner() {
-  document.getElementById('key-banner').style.display = apiKey ? 'none' : 'block';
-}
-
-function setAnalyzeBtn(on) {
-  document.getElementById('analyze-btn').disabled = !on;
-}
-
-/* ── File ──────────────────────────────────────── */
 async function handleFile(file) {
   if (!file || !file.name.toLowerCase().endsWith('.pdf')) { showErr('Please upload a PDF file.'); return; }
   hideErr();
   document.getElementById('file-name').textContent = file.name;
-
-  const fd = new FormData();
-  fd.append('file', file);
+  const fd = new FormData(); fd.append('file', file);
   try {
     const res = await fetch('/extract', { method: 'POST', body: fd });
     if (!res.ok) throw new Error();
@@ -871,95 +566,64 @@ async function handleFile(file) {
     document.getElementById('bill-text').value = text;
     billText = text.trim();
     document.getElementById('char-count').textContent = text.length.toLocaleString() + ' chars';
-    setAnalyzeBtn(billText.length > 20);
-  } catch {
-    showErr('Could not parse the PDF. Try pasting the text directly.');
-  }
+    document.getElementById('analyze-btn').disabled = billText.length < 20;
+  } catch { showErr('Could not parse the PDF. Try pasting the text directly.'); }
 }
 
-/* ── Analyze ───────────────────────────────────── */
+/* ── Analyze ─────────────────────────────────── */
 async function analyze() {
-  if (!apiKey) { openKeyModal(); return; }
-  const text = billText;
-  if (!text) return;
+  if (!window._fbUser) { showErr('Please sign in first.'); return; }
+  if (!billText) return;
 
   const btn = document.getElementById('analyze-btn');
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div>Analyzing...';
   hideErr();
-
   document.getElementById('results').style.display = 'block';
   renderSkeleton();
 
-  const prompt = `You are a senior medical billing auditor. Analyze the bill below and return ONLY a JSON object — no markdown, no explanation.
-
-JSON shape:
-{
-  "summary": {
-    "total_billed": "$X,XXX",
-    "potential_overcharge": "$X,XXX",
-    "estimated_savings": "$X,XXX",
-    "flags_count": N
-  },
-  "flags": [
-    {
-      "type": "overcharge|duplicate|verify|ok",
-      "title": "Short issue title",
-      "description": "1-2 sentence plain-English explanation of the problem.",
-      "amount": "$XXX or null"
-    }
-  ],
-  "dispute_letter": "Full dispute letter text ready to mail or email."
-}
-
-Medical bill to analyze:
-${text}`;
-
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const token = await window._fbUser.getIdToken(true);
+    window._fbToken = token;
+
+    const res = await fetch('/analyze', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4096,
-        messages: [{ role: 'user', content: prompt }]
-      })
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ bill_text: billText })
     });
 
+    if (res.status === 429) {
+      const d = await res.json();
+      document.getElementById('results').style.display = 'none';
+      showErr(d.detail || 'Monthly limit reached.');
+      return;
+    }
     if (!res.ok) {
-      const e = await res.json().catch(() => ({}));
-      throw new Error(e?.error?.message || `API error ${res.status}`);
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.detail || 'Analysis failed');
     }
 
     const data = await res.json();
-    let raw = (data.content[0]?.text || '').trim();
-    // strip markdown fences if present
-    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-    renderResults(JSON.parse(raw));
+    renderResults(data);
+    if (data.usage) updateUsageUI(data.usage.count, data.usage.limit);
 
-  } catch (e) {
+  } catch(e) {
     document.getElementById('results').style.display = 'none';
-    showErr(e.message || 'Analysis failed. Check your API key and try again.');
+    showErr(e.message || 'Analysis failed. Please try again.');
   } finally {
     btn.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5"/><path d="m13.5 13.5-3-3"/></svg>Analyze bill';
-    setAnalyzeBtn(billText.length > 20);
+    btn.disabled = billText.length < 20;
   }
 }
 
-/* ── Render ────────────────────────────────────── */
+/* ── Render ──────────────────────────────────── */
 function renderResults(r) {
   const s = r.summary || {};
   document.getElementById('s-overcharge').textContent = s.potential_overcharge || '$0';
-  document.getElementById('s-flags').textContent      = s.flags_count ?? (r.flags || []).length;
-  document.getElementById('s-savings').textContent    = s.estimated_savings || '$0';
+  document.getElementById('s-flags').textContent = s.flags_count ?? (r.flags || []).length;
+  document.getElementById('s-savings').textContent = s.estimated_savings || '$0';
 
-  const list = document.getElementById('flags-list');
-  list.innerHTML = '';
+  const list = document.getElementById('flags-list'); list.innerHTML = '';
   const flags = r.flags || [];
   document.getElementById('flag-count').textContent = flags.length + ' items';
 
@@ -972,8 +636,7 @@ function renderResults(r) {
 
   flags.forEach(f => {
     const m = meta[f.type] || meta.verify;
-    const el = document.createElement('div');
-    el.className = 'flag-item';
+    const el = document.createElement('div'); el.className = 'flag-item';
     el.innerHTML = `
       <span class="flag-badge ${m.badge}">${m.label}</span>
       <div class="flag-body">
@@ -993,9 +656,7 @@ function renderSkeleton() {
   document.getElementById('s-overcharge').textContent = '—';
   document.getElementById('s-flags').textContent = '—';
   document.getElementById('s-savings').textContent = '—';
-
-  const list = document.getElementById('flags-list');
-  list.innerHTML = [65,45,75,55].map(w => `
+  document.getElementById('flags-list').innerHTML = [65,45,75,55].map(w => `
     <div class="flag-item">
       <div class="skel" style="width:72px;height:22px;border-radius:4px;flex-shrink:0"></div>
       <div class="flag-body">
@@ -1004,21 +665,12 @@ function renderSkeleton() {
       </div>
     </div>
   `).join('');
-
   document.getElementById('dispute-letter').textContent = '';
 }
 
-/* ── Helpers ───────────────────────────────────── */
-function esc(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-function showErr(msg) {
-  const b = document.getElementById('err-box');
-  document.getElementById('err-msg').textContent = msg;
-  b.style.display = 'flex';
-}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function showErr(msg) { const b = document.getElementById('err-box'); document.getElementById('err-msg').textContent = msg; b.style.display = 'flex'; }
 function hideErr() { document.getElementById('err-box').style.display = 'none'; }
-
 function copyLetter() {
   const text = document.getElementById('dispute-letter').textContent;
   if (!text) return;
@@ -1029,27 +681,6 @@ function copyLetter() {
     setTimeout(() => btn.innerHTML = orig, 2000);
   });
 }
-
-/* ── Modal ─────────────────────────────────────── */
-function openKeyModal() {
-  document.getElementById('api-key-input').value = apiKey;
-  document.getElementById('key-modal').classList.add('open');
-}
-function closeKeyModal() {
-  document.getElementById('key-modal').classList.remove('open');
-}
-function saveKey() {
-  const v = document.getElementById('api-key-input').value.trim();
-  apiKey = v;
-  v ? localStorage.setItem('medbill_key', v) : localStorage.removeItem('medbill_key');
-  closeKeyModal();
-  checkBanner();
-}
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('key-modal').addEventListener('click', e => {
-    if (e.target === e.currentTarget) closeKeyModal();
-  });
-});
 </script>
 </body>
 </html>

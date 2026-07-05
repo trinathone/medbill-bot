@@ -432,7 +432,7 @@
 <!-- Firebase SDKs -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged }
+  import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, onAuthStateChanged }
     from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   const firebaseConfig = {
@@ -453,6 +453,13 @@
   window._fbProvider = provider;
   window._fbSignOut  = () => signOut(auth);
 
+  // handle redirect result on page load
+  getRedirectResult(auth).then(result => {
+    if (result && result.user) {
+      window._fbUser = result.user;
+    }
+  }).catch(e => console.warn('redirect result:', e));
+
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       window._fbUser = user;
@@ -470,7 +477,7 @@
 <script>
 /* ── Auth UI ─────────────────────────────────── */
 function signInWithGoogle() {
-  window._fbAuth.signInWithPopup(window._fbProvider).catch(e => {
+  window._fbAuth.signInWithRedirect(window._fbProvider).catch(e => {
     console.error(e);
     showErr("Sign-in failed: " + e.message);
   });

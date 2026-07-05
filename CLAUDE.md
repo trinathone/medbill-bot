@@ -1,64 +1,78 @@
-# MedBill Bot — AI Medical Bill Analyzer
+# MedBill Bot — Redesign Task
 
-## What We're Building
-A web app where patients upload/paste their medical bill or EOB (Explanation of Benefits) and AI:
-1. Explains every line item in plain English
-2. Flags potential overcharges, duplicate billing, unbundling fraud
-3. Checks if charity care / financial assistance applies
-4. Drafts a dispute letter instantly
+## What to build
 
-## Stack
-- **Backend:** Python + FastAPI
-- **Frontend:** Single HTML file with Tailwind CSS (no build step)
-- **AI:** Anthropic Claude API (claude-3-5-haiku for speed/cost)
-- **PDF parsing:** PyMuPDF (fitz)
-- **Deploy:** Single `python app.py` command
+Two usage modes for the same app:
 
-## Project Structure
-```
-medbill-bot/
-├── app.py              # FastAPI backend (ALL logic here)
-├── static/
-│   └── index.html      # Single-page frontend
-├── requirements.txt
-└── .env.example
-```
+### Mode 1: Website with BYOK (Bring Your Own Key)
+- Add an API key settings panel in the UI (top-right gear icon or banner)
+- User pastes their Anthropic API key → store in localStorage ONLY, never sent to our server
+- Move the AI analysis call to **client-side JavaScript** using fetch() to https://api.anthropic.com/v1/messages directly
+- Backend (FastAPI) only handles PDF text extraction — returns raw text to frontend, frontend does the AI call
+- Show a "🔑 Add your Anthropic API key to analyze bills" banner when no key is set
+- Key input: password field, show/hide toggle, "Save Key" button, "Remove Key" link
+- After key is saved, the analyze flow works entirely in browser
 
-## Key Rules
-- NO database needed — stateless, each analysis is independent
-- NO auth needed — MVP is fully open
-- Mobile-first UI — patients use phones
-- Response must be structured: sections for each finding
-- Must handle: uploaded PDF, pasted text, or typed bill description
-- Error messages must be human-friendly (no stack traces to users)
-- The dispute letter must be copy-paste ready
+### Mode 2: MCP Server
+- Create `mcp_server.py` — a proper MCP server using the `mcp` Python package
+- Expose one tool: `analyze_medical_bill(bill_text: str) -> dict`
+- The MCP server uses the user's ANTHROPIC_API_KEY env var
+- Add to README: how to add to Claude Desktop config (claude_desktop_config.json)
+- Add to README: how to use with Claude Code (`claude mcp add`)
 
-## API Endpoints
-- `POST /analyze` — accepts text or file, returns JSON analysis
-- `GET /` — serves the frontend
+## Files to create/modify
 
-## Analysis Output Structure
-```json
-{
-  "summary": "One paragraph plain English summary",
-  "line_items": [
-    {
-      "charge": "Room & Board",
-      "amount": "$2,400",
-      "explanation": "Daily rate for hospital room",
-      "flag": null | "OVERCHARGE" | "DUPLICATE" | "VERIFY",
-      "flag_reason": "..."
-    }
-  ],
-  "total_charged": "$8,400",
-  "estimated_fair_price": "$3,200",
-  "potential_savings": "$5,200",
-  "charity_care_eligible": true | false | "unknown",
-  "dispute_letter": "Full letter text ready to copy-paste",
-  "action_items": ["Call billing at 1-800-XXX", "Request itemized bill", ...]
-}
+### `static/index.html` — full rewrite
+- Keep the same dark medical UI design
+- Add gear icon top-right → opens API key modal
+- Banner at top: "No API key set — add yours to get started" (dismisses when key saved)
+- Upload/paste flow unchanged
+- Analysis now done via fetch() to Anthropic API from browser JS
+- Show model used: claude-haiku-4-5-20251001 (cheapest, fast)
+- Key stored as localStorage.getItem('anthropic_api_key')
+
+### `app.py` — simplify
+- Remove all Bedrock/boto3 AI calls
+- Keep only: POST /extract — accepts file upload, returns {text: "...extracted bill text..."}
+- Keep: GET / — serves index.html
+- Remove /analyze endpoint (AI moved to browser)
+
+### `mcp_server.py` — new file
+```python
+# MCP server exposing analyze_medical_bill tool
+# Uses anthropic Python SDK + ANTHROPIC_API_KEY env var
+# Run with: python mcp_server.py
+# Add to Claude Desktop: {"mcpServers": {"medbill": {"command": "python", "args": ["/path/to/mcp_server.py"]}}}
 ```
 
-## Environment
-- ANTHROPIC_API_KEY required
-- Run: uvicorn app:app --reload --port 8000
+### `requirements.txt` — update
+- Remove boto3, anthropic (server-side)
+- Add: mcp>=1.0.0, anthropic>=0.40.0 (for mcp_server.py only)
+- FastAPI backend only needs: fastapi, uvicorn, pymupdf, python-multipart
+
+### `README.md` — rewrite with two sections:
+1. Website usage (paste key, analyze bill)
+2. MCP usage — Claude Desktop + Claude Code setup instructions with exact config snippets
+
+## Design for the key input modal
+```
+┌─────────────────────────────────────┐
+│  🔑 Your Anthropic API Key          │
+│  ─────────────────────────────────  │
+│  [sk-ant-...            ] [👁]      │
+│  Stored locally only. Never sent    │
+│  to our servers.                    │
+│  [Save Key]           [Cancel]      │
+│                                     │
+│  Get a key: console.anthropic.com   │
+└─────────────────────────────────────┘
+```
+
+## Important
+- The Anthropic API key NEVER leaves the browser. Only the extracted PDF text goes to Anthropic's API directly from the user's browser.
+- Use claude-haiku-4-5-20251001 as the model (cheapest for users)
+- The system prompt and JSON schema for analysis stays exactly the same as the current /analyze endpoint
+- After building, test by starting uvicorn, opening browser, verify the modal and banner render correctly
+- Update Railway env vars: remove AWS credentials (no longer needed), keep PORT
+- Push all changes to git when done
+- Deploy: railway up --service medbill-bot --detach

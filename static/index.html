@@ -21,6 +21,9 @@
     .drop-zone.drag-over { border-color: #6366f1; background: rgba(99,102,241,0.1); }
     ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #0f172a; }
     ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    .modal-overlay { background: rgba(2,6,23,0.75); }
+    .icon-btn { transition: all .15s; }
+    .icon-btn:hover { background: rgba(99,102,241,0.15); }
   </style>
 </head>
 <body class="gradient-bg min-h-screen text-slate-100">
@@ -33,11 +36,23 @@
       <h1 class="text-base font-bold text-white leading-tight">MedBill Bot</h1>
       <p class="text-xs text-slate-400">AI Medical Bill Analyzer</p>
     </div>
-    <div class="ml-auto">
+    <div class="ml-auto flex items-center gap-2">
       <span class="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded-full">Free</span>
+      <button onclick="openKeyModal()" title="API key settings"
+        class="icon-btn w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white">⚙️</button>
     </div>
   </div>
 </header>
+
+<!-- API KEY BANNER -->
+<div id="key-banner" class="hidden px-4 pt-4 max-w-2xl mx-auto">
+  <button onclick="openKeyModal()"
+    class="w-full text-left bg-indigo-500/10 border border-indigo-500/30 rounded-xl px-4 py-3 flex items-center gap-3 hover:bg-indigo-500/15 transition-all">
+    <span class="text-lg">🔑</span>
+    <span class="text-sm text-indigo-200 flex-1">No API key set — add yours to get started</span>
+    <span class="text-xs text-indigo-300 whitespace-nowrap">Add key →</span>
+  </button>
+</div>
 
 <!-- HERO -->
 <section class="px-4 pt-8 pb-6 max-w-2xl mx-auto text-center">
@@ -97,6 +112,7 @@
       </span>
     </button>
     <p id="error-msg" class="hidden mt-3 text-xs text-red-400 text-center bg-red-500/10 border border-red-500/20 rounded-lg py-2 px-3"></p>
+    <p class="mt-3 text-xs text-slate-500 text-center">Analyzed with <span class="text-slate-400">claude-haiku-4-5-20251001</span>, called directly from your browser using your own API key.</p>
   </div>
 
   <!-- RESULTS (hidden until analysis) -->
@@ -162,9 +178,160 @@
   </div>
 </main>
 
+<!-- API KEY MODAL -->
+<div id="key-modal" class="hidden fixed inset-0 modal-overlay flex items-center justify-center px-4 z-50">
+  <div class="card rounded-2xl p-5 w-full max-w-sm">
+    <h3 class="text-sm font-semibold text-white flex items-center gap-2 mb-1">🔑 Your Anthropic API Key</h3>
+    <div class="border-t border-slate-700/50 my-3"></div>
+    <div class="flex gap-2">
+      <input id="key-input" type="password" placeholder="sk-ant-..."
+        class="flex-1 bg-slate-800/60 border border-slate-600/40 rounded-xl px-3 py-2 text-sm text-slate-200 placeholder-slate-500" />
+      <button onclick="toggleKeyVisibility()" id="key-toggle-btn"
+        class="w-10 h-10 flex-shrink-0 rounded-xl border border-slate-600/40 bg-slate-800/60 flex items-center justify-center text-slate-400 hover:text-white">👁</button>
+    </div>
+    <p class="text-xs text-slate-500 mt-2 leading-relaxed">Stored locally only. Never sent to our servers.</p>
+    <p id="key-modal-error" class="hidden mt-2 text-xs text-red-400"></p>
+    <div class="flex items-center justify-between gap-3 mt-4">
+      <button onclick="saveKey()" class="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-all">Save Key</button>
+      <button onclick="closeKeyModal()" class="flex-1 py-2.5 rounded-xl border border-slate-600 text-slate-400 hover:text-white text-sm transition-all">Cancel</button>
+    </div>
+    <div class="flex items-center justify-between mt-3">
+      <a href="https://console.anthropic.com" target="_blank" rel="noopener" class="text-xs text-indigo-400 hover:text-indigo-300">Get a key: console.anthropic.com</a>
+      <a href="#" id="remove-key-link" onclick="removeKey(); return false;" class="hidden text-xs text-red-400 hover:text-red-300">Remove Key</a>
+    </div>
+  </div>
+</div>
+
 <script>
+  const KEY_STORAGE = 'anthropic_api_key';
+  const MODEL = 'claude-haiku-4-5-20251001';
+  const MAX_BILL_CHARS = 30000;
+
+  const SYSTEM_PROMPT = `You are a meticulous medical billing advocate who helps patients understand and dispute confusing medical bills and Explanations of Benefits (EOBs).
+
+For the bill text you are given:
+1. Explain every distinct line item in plain, friendly English (no jargon).
+2. Flag potential issues:
+   - OVERCHARGE: the amount looks unusually high compared to typical fair market/Medicare-adjacent rates.
+   - DUPLICATE: the same service appears to be billed more than once.
+   - VERIFY: unclear or unbundled charges the patient should ask the provider to itemize/justify.
+   - null: charge looks normal and correctly billed.
+3. Estimate a "fair price" total based on typical reasonable rates, and calculate potential savings versus the charged total. If the bill doesn't include enough information to compute real dollar totals, make clearly-labeled reasonable estimates rather than refusing.
+4. Assess charity care / financial assistance eligibility only from what's stated; if unknown, say "unknown".
+5. Draft a complete, professional, copy-paste-ready dispute letter addressed to the billing department, referencing the specific flagged line items and requesting an itemized bill and review. Use placeholders like [Your Name], [Account Number], [Date] where patient-specific info wasn't provided.
+6. Give a short, concrete, ordered list of action items the patient should take.
+
+Always call the submit_bill_analysis tool with your findings. Be specific and cite the actual charges from the input. Never fabricate charges that are not present in the input.`;
+
+  const ANALYSIS_TOOL = {
+    name: "submit_bill_analysis",
+    description: "Submit the structured analysis of a medical bill or EOB.",
+    input_schema: {
+      type: "object",
+      properties: {
+        summary: {
+          type: "string",
+          description: "One paragraph, plain English summary a non-expert patient can understand.",
+        },
+        line_items: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              charge: { type: "string" },
+              amount: { type: "string" },
+              explanation: {
+                type: "string",
+                description: "Plain English explanation of what this charge is for.",
+              },
+              flag: {
+                type: ["string", "null"],
+                enum: ["OVERCHARGE", "DUPLICATE", "VERIFY", null],
+              },
+              flag_reason: {
+                type: ["string", "null"],
+                description: "Why this item was flagged, or null if not flagged.",
+              },
+            },
+            required: ["charge", "amount", "explanation", "flag", "flag_reason"],
+          },
+        },
+        total_charged: { type: "string" },
+        estimated_fair_price: { type: "string" },
+        potential_savings: { type: "string" },
+        charity_care_eligible: {
+          type: ["boolean", "string"],
+          description: 'true, false, or "unknown" if not enough information is provided.',
+        },
+        dispute_letter: {
+          type: "string",
+          description: "Full, ready-to-send dispute letter text, copy-paste ready with placeholders like [Your Name] where patient-specific info is unknown.",
+        },
+        action_items: {
+          type: "array",
+          items: { type: "string" },
+          description: "Concrete next steps the patient should take, in order.",
+        },
+      },
+      required: [
+        "summary",
+        "line_items",
+        "total_charged",
+        "estimated_fair_price",
+        "potential_savings",
+        "charity_care_eligible",
+        "dispute_letter",
+        "action_items",
+      ],
+    },
+  };
+
   let selectedFile = null;
   let currentTab = 'paste';
+
+  function getKey() { return localStorage.getItem(KEY_STORAGE) || ''; }
+
+  function refreshKeyUI() {
+    const hasKey = !!getKey();
+    document.getElementById('key-banner').classList.toggle('hidden', hasKey);
+    document.getElementById('remove-key-link').classList.toggle('hidden', !hasKey);
+  }
+
+  function openKeyModal() {
+    document.getElementById('key-input').value = getKey();
+    document.getElementById('key-modal-error').classList.add('hidden');
+    document.getElementById('key-modal').classList.remove('hidden');
+  }
+
+  function closeKeyModal() {
+    document.getElementById('key-modal').classList.add('hidden');
+  }
+
+  function toggleKeyVisibility() {
+    const input = document.getElementById('key-input');
+    const btn = document.getElementById('key-toggle-btn');
+    if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
+    else { input.type = 'password'; btn.textContent = '👁'; }
+  }
+
+  function saveKey() {
+    const val = document.getElementById('key-input').value.trim();
+    if (!val) {
+      const err = document.getElementById('key-modal-error');
+      err.textContent = 'Please enter a key.';
+      err.classList.remove('hidden');
+      return;
+    }
+    localStorage.setItem(KEY_STORAGE, val);
+    refreshKeyUI();
+    closeKeyModal();
+  }
+
+  function removeKey() {
+    localStorage.removeItem(KEY_STORAGE);
+    refreshKeyUI();
+    closeKeyModal();
+  }
 
   function switchTab(tab) {
     currentTab = tab;
@@ -210,25 +377,68 @@
 
   function hideError() { document.getElementById('error-msg').classList.add('hidden'); }
 
+  async function getBillText() {
+    if (currentTab === 'upload' && selectedFile) {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      const res = await fetch('/extract', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Could not read that file.');
+      return data.text;
+    }
+    const txt = document.getElementById('bill-text').value.trim();
+    if (!txt) throw new Error('Please paste your bill text or upload a file first.');
+    return txt;
+  }
+
+  async function callClaude(billText, apiKey) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 4096,
+        system: SYSTEM_PROMPT,
+        tools: [ANALYSIS_TOOL],
+        tool_choice: { type: 'tool', name: 'submit_bill_analysis' },
+        messages: [
+          { role: 'user', content: `Here is the medical bill / EOB to analyze:\n\n${billText}` },
+        ],
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.error?.message || 'The Anthropic API returned an error. Check your key and try again.');
+    }
+    const toolBlock = (data.content || []).find(b => b.type === 'tool_use');
+    if (!toolBlock) throw new Error("We couldn't generate a structured analysis for this bill. Please try again.");
+    const result = toolBlock.input;
+    if (typeof result.charity_care_eligible === 'string' &&
+        ['true', 'false'].includes(result.charity_care_eligible.toLowerCase())) {
+      result.charity_care_eligible = result.charity_care_eligible.toLowerCase() === 'true';
+    }
+    return result;
+  }
+
   async function analyze() {
     hideError();
-    const formData = new FormData();
-    if (currentTab === 'upload' && selectedFile) {
-      formData.append('file', selectedFile);
-    } else {
-      const txt = document.getElementById('bill-text').value.trim();
-      if (!txt) { showError('Please paste your bill text or upload a file first.'); return; }
-      formData.append('text', txt);
-    }
+    const apiKey = getKey();
+    if (!apiKey) { openKeyModal(); return; }
 
     setLoading(true);
     try {
-      const res = await fetch('/analyze', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (!res.ok) { showError(data.detail || 'Something went wrong. Please try again.'); return; }
-      renderResults(data);
-    } catch(e) {
-      showError('Network error. Please check your connection and try again.');
+      let billText = await getBillText();
+      billText = billText.trim();
+      if (billText.length > MAX_BILL_CHARS) billText = billText.slice(0, MAX_BILL_CHARS);
+      const result = await callClaude(billText, apiKey);
+      renderResults(result);
+    } catch (e) {
+      showError(e.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -317,6 +527,8 @@
     document.getElementById('file-name').classList.add('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
+
+  refreshKeyUI();
 </script>
 </body>
 </html>

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MedBill Bot — AI Medical Bill Analyzer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    * { font-family: 'Inter', sans-serif; }
+    .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); }
+    .card { background: rgba(30,41,59,0.8); border: 1px solid rgba(99,102,241,0.2); }
+    .flag-overcharge { background: rgba(239,68,68,0.15); border-left: 3px solid #ef4444; }
+    .flag-duplicate  { background: rgba(245,158,11,0.15); border-left: 3px solid #f59e0b; }
+    .flag-verify     { background: rgba(99,102,241,0.15); border-left: 3px solid #6366f1; }
+    .flag-ok         { background: rgba(16,185,129,0.08); border-left: 3px solid #10b981; }
+    .pulse-ring { animation: pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .savings-number { background: linear-gradient(135deg, #10b981, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    textarea:focus, input:focus { outline: none; box-shadow: 0 0 0 2px rgba(99,102,241,0.5); }
+    .drop-zone.drag-over { border-color: #6366f1; background: rgba(99,102,241,0.1); }
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  </style>
+</head>
+<body class="gradient-bg min-h-screen text-slate-100">
+
+<!-- HEADER -->
+<header class="border-b border-slate-700/50 px-4 py-4">
+  <div class="max-w-2xl mx-auto flex items-center gap-3">
+    <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-lg">💊</div>
+    <div>
+      <h1 class="text-base font-bold text-white leading-tight">MedBill Bot</h1>
+      <p class="text-xs text-slate-400">AI Medical Bill Analyzer</p>
+    </div>
+    <div class="ml-auto">
+      <span class="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded-full">Free</span>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="px-4 pt-8 pb-6 max-w-2xl mx-auto text-center">
+  <h2 class="text-2xl font-bold text-white mb-2">Stop paying <span class="text-red-400">overcharged</span> medical bills</h2>
+  <p class="text-slate-400 text-sm leading-relaxed">Paste your bill or upload a PDF. AI finds errors, explains every charge, and writes your dispute letter — in seconds.</p>
+  <div class="flex justify-center gap-6 mt-4 text-xs text-slate-500">
+    <span class="flex items-center gap-1">🔒 Private</span>
+    <span class="flex items-center gap-1">⚡ Instant</span>
+    <span class="flex items-center gap-1">✉️ Dispute letter included</span>
+  </div>
+</section>
+
+<!-- INPUT CARD -->
+<main class="px-4 max-w-2xl mx-auto pb-16">
+  <div class="card rounded-2xl p-5 mb-4">
+    <!-- Tabs -->
+    <div class="flex gap-1 mb-4 bg-slate-800/60 p-1 rounded-xl">
+      <button id="tab-paste" onclick="switchTab('paste')"
+        class="tab-btn flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all bg-indigo-600 text-white">
+        📋 Paste Text
+      </button>
+      <button id="tab-upload" onclick="switchTab('upload')"
+        class="tab-btn flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all text-slate-400 hover:text-white">
+        📁 Upload PDF
+      </button>
+    </div>
+
+    <!-- Paste Tab -->
+    <div id="pane-paste">
+      <textarea id="bill-text" rows="8"
+        class="w-full bg-slate-800/60 border border-slate-600/40 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500 resize-none"
+        placeholder="Paste your medical bill, EOB, or even just describe the charges...&#10;&#10;Example:&#10;Room &amp; Board 3 days — $7,200&#10;Lab Work (CBC) — $840&#10;Physician Visit — $1,200&#10;Bandages (x4) — $320&#10;..."></textarea>
+    </div>
+
+    <!-- Upload Tab -->
+    <div id="pane-upload" class="hidden">
+      <div id="drop-zone" onclick="document.getElementById('file-input').click()"
+        class="drop-zone border-2 border-dashed border-slate-600 rounded-xl p-8 text-center cursor-pointer transition-all hover:border-indigo-500 hover:bg-indigo-500/5">
+        <div class="text-3xl mb-2">📄</div>
+        <p class="text-sm font-medium text-slate-300">Drop your PDF here or tap to browse</p>
+        <p class="text-xs text-slate-500 mt-1">PDF or TXT • Max 15 MB</p>
+        <div id="file-name" class="hidden mt-3 text-xs text-indigo-400 font-medium"></div>
+      </div>
+      <input id="file-input" type="file" accept=".pdf,.txt" class="hidden" onchange="handleFileSelect(this)" />
+    </div>
+
+    <!-- Analyze Button -->
+    <button id="analyze-btn" onclick="analyze()"
+      class="w-full mt-4 py-3.5 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+      <span id="btn-text">🔍 Analyze My Bill</span>
+      <span id="btn-spinner" class="hidden">
+        <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
+        Analyzing...
+      </span>
+    </button>
+    <p id="error-msg" class="hidden mt-3 text-xs text-red-400 text-center bg-red-500/10 border border-red-500/20 rounded-lg py-2 px-3"></p>
+  </div>
+
+  <!-- RESULTS (hidden until analysis) -->
+  <div id="results" class="hidden space-y-4">
+
+    <!-- Savings Hero -->
+    <div class="card rounded-2xl p-5 text-center">
+      <p class="text-xs text-slate-400 uppercase tracking-widest mb-1">Potential Savings Found</p>
+      <p id="savings-amount" class="text-5xl font-bold savings-number mb-1">$0</p>
+      <div class="flex justify-center gap-6 mt-3 text-xs">
+        <div class="text-center">
+          <p class="text-slate-400">Billed</p>
+          <p id="total-charged" class="text-white font-semibold">—</p>
+        </div>
+        <div class="text-slate-600">→</div>
+        <div class="text-center">
+          <p class="text-slate-400">Fair Price</p>
+          <p id="fair-price" class="text-emerald-400 font-semibold">—</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="card rounded-2xl p-5">
+      <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">📋 Summary</h3>
+      <p id="summary-text" class="text-sm text-slate-300 leading-relaxed"></p>
+      <div id="charity-badge" class="hidden mt-3"></div>
+    </div>
+
+    <!-- Line Items -->
+    <div class="card rounded-2xl p-5">
+      <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">🧾 Line by Line</h3>
+      <div id="line-items" class="space-y-2"></div>
+    </div>
+
+    <!-- Action Items -->
+    <div class="card rounded-2xl p-5">
+      <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">✅ What To Do Next</h3>
+      <ol id="action-items" class="space-y-2 list-none"></ol>
+    </div>
+
+    <!-- Dispute Letter -->
+    <div class="card rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-widest">✉️ Dispute Letter</h3>
+        <button onclick="copyLetter()" id="copy-btn"
+          class="text-xs bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/30 px-3 py-1 rounded-lg transition-all">
+          Copy
+        </button>
+      </div>
+      <div class="bg-slate-800/60 rounded-xl p-4 border border-slate-600/30">
+        <pre id="dispute-letter" class="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed font-mono"></pre>
+      </div>
+      <p class="text-xs text-slate-500 mt-2">Replace the <span class="text-indigo-300">[bracketed placeholders]</span> with your actual information before sending.</p>
+    </div>
+
+    <!-- Analyze Again -->
+    <button onclick="reset()"
+      class="w-full py-3 rounded-xl border border-slate-600 text-slate-400 hover:text-white hover:border-slate-400 text-sm transition-all">
+      ← Analyze Another Bill
+    </button>
+
+  </div>
+</main>
+
+<script>
+  let selectedFile = null;
+  let currentTab = 'paste';
+
+  function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById('pane-paste').classList.toggle('hidden', tab !== 'paste');
+    document.getElementById('pane-upload').classList.toggle('hidden', tab !== 'upload');
+    document.getElementById('tab-paste').className = tab === 'paste'
+      ? 'tab-btn flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all bg-indigo-600 text-white'
+      : 'tab-btn flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all text-slate-400 hover:text-white';
+    document.getElementById('tab-upload').className = tab === 'upload'
+      ? 'tab-btn flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all bg-indigo-600 text-white'
+      : 'tab-btn flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all text-slate-400 hover:text-white';
+  }
+
+  function handleFileSelect(input) {
+    if (input.files && input.files[0]) {
+      selectedFile = input.files[0];
+      const fn = document.getElementById('file-name');
+      fn.textContent = '📎 ' + selectedFile.name;
+      fn.classList.remove('hidden');
+    }
+  }
+
+  // Drag & drop
+  const dz = document.getElementById('drop-zone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) { selectedFile = f; const fn = document.getElementById('file-name'); fn.textContent = '📎 ' + f.name; fn.classList.remove('hidden'); }
+  });
+
+  function setLoading(on) {
+    document.getElementById('btn-text').classList.toggle('hidden', on);
+    document.getElementById('btn-spinner').classList.toggle('hidden', !on);
+    document.getElementById('analyze-btn').disabled = on;
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error-msg');
+    el.textContent = msg; el.classList.remove('hidden');
+  }
+
+  function hideError() { document.getElementById('error-msg').classList.add('hidden'); }
+
+  async function analyze() {
+    hideError();
+    const formData = new FormData();
+    if (currentTab === 'upload' && selectedFile) {
+      formData.append('file', selectedFile);
+    } else {
+      const txt = document.getElementById('bill-text').value.trim();
+      if (!txt) { showError('Please paste your bill text or upload a file first.'); return; }
+      formData.append('text', txt);
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('/analyze', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok) { showError(data.detail || 'Something went wrong. Please try again.'); return; }
+      renderResults(data);
+    } catch(e) {
+      showError('Network error. Please check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderResults(d) {
+    // Savings hero
+    document.getElementById('savings-amount').textContent = d.potential_savings || '—';
+    document.getElementById('total-charged').textContent = d.total_charged || '—';
+    document.getElementById('fair-price').textContent = d.estimated_fair_price || '—';
+
+    // Summary
+    document.getElementById('summary-text').textContent = d.summary || '';
+
+    // Charity care badge
+    const cb = document.getElementById('charity-badge');
+    if (d.charity_care_eligible === true) {
+      cb.innerHTML = '<span class="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full">✅ You may qualify for charity care / financial assistance</span>';
+      cb.classList.remove('hidden');
+    } else if (d.charity_care_eligible === false) {
+      cb.innerHTML = '<span class="text-xs bg-slate-700/40 text-slate-400 border border-slate-600/30 px-3 py-1 rounded-full">ℹ️ Charity care not likely applicable based on this bill</span>';
+      cb.classList.remove('hidden');
+    }
+
+    // Line items
+    const li = document.getElementById('line-items');
+    li.innerHTML = (d.line_items || []).map(item => {
+      const flagClass = item.flag === 'OVERCHARGE' ? 'flag-overcharge'
+                      : item.flag === 'DUPLICATE'  ? 'flag-duplicate'
+                      : item.flag === 'VERIFY'     ? 'flag-verify'
+                      : 'flag-ok';
+      const badge = item.flag
+        ? `<span class="ml-2 text-xs px-2 py-0.5 rounded-full font-semibold ${
+            item.flag === 'OVERCHARGE' ? 'bg-red-500/20 text-red-400' :
+            item.flag === 'DUPLICATE'  ? 'bg-amber-500/20 text-amber-400' :
+            'bg-indigo-500/20 text-indigo-400'}">${item.flag}</span>`
+        : '<span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">OK</span>';
+      return `<div class="${flagClass} rounded-xl p-3">
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex-1">
+            <div class="flex items-center flex-wrap gap-1">
+              <span class="text-sm font-medium text-white">${esc(item.charge)}</span>${badge}
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">${esc(item.explanation)}</p>
+            ${item.flag_reason ? `<p class="text-xs mt-1 ${item.flag==='OVERCHARGE'?'text-red-300':item.flag==='DUPLICATE'?'text-amber-300':'text-indigo-300'}">⚠️ ${esc(item.flag_reason)}</p>` : ''}
+          </div>
+          <span class="text-sm font-bold text-white whitespace-nowrap">${esc(item.amount)}</span>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Action items
+    const ai = document.getElementById('action-items');
+    ai.innerHTML = (d.action_items || []).map((a, i) =>
+      `<li class="flex items-start gap-3 text-sm text-slate-300">
+        <span class="w-5 h-5 rounded-full bg-indigo-600/40 text-indigo-300 text-xs font-bold flex-shrink-0 flex items-center justify-center mt-0.5">${i+1}</span>
+        <span>${esc(a)}</span>
+      </li>`
+    ).join('');
+
+    // Dispute letter
+    document.getElementById('dispute-letter').textContent = d.dispute_letter || '';
+
+    // Show results, scroll up
+    document.getElementById('results').classList.remove('hidden');
+    document.querySelector('main').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  async function copyLetter() {
+    const text = document.getElementById('dispute-letter').textContent;
+    await navigator.clipboard.writeText(text).catch(() => {});
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('bg-emerald-600/30', 'text-emerald-300', 'border-emerald-500/30');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('bg-emerald-600/30','text-emerald-300','border-emerald-500/30'); }, 2000);
+  }
+
+  function reset() {
+    document.getElementById('results').classList.add('hidden');
+    document.getElementById('bill-text').value = '';
+    selectedFile = null;
+    document.getElementById('file-name').classList.add('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>

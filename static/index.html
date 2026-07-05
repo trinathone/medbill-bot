@@ -3,532 +3,1043 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MedBill Bot — AI Medical Bill Analyzer</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>MedBill — AI Medical Bill Analyzer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    * { font-family: 'Inter', sans-serif; }
-    .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); }
-    .card { background: rgba(30,41,59,0.8); border: 1px solid rgba(99,102,241,0.2); }
-    .flag-overcharge { background: rgba(239,68,68,0.15); border-left: 3px solid #ef4444; }
-    .flag-duplicate  { background: rgba(245,158,11,0.15); border-left: 3px solid #f59e0b; }
-    .flag-verify     { background: rgba(99,102,241,0.15); border-left: 3px solid #6366f1; }
-    .flag-ok         { background: rgba(16,185,129,0.08); border-left: 3px solid #10b981; }
-    .pulse-ring { animation: pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-    .savings-number { background: linear-gradient(135deg, #10b981, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    textarea:focus, input:focus { outline: none; box-shadow: 0 0 0 2px rgba(99,102,241,0.5); }
-    .drop-zone.drag-over { border-color: #6366f1; background: rgba(99,102,241,0.1); }
-    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #0f172a; }
-    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-    .modal-overlay { background: rgba(2,6,23,0.75); }
-    .icon-btn { transition: all .15s; }
-    .icon-btn:hover { background: rgba(99,102,241,0.15); }
+    /* ── Linear design tokens ────────────────────────────── */
+    :root {
+      --bg:        #08090a;
+      --panel:     #0f1011;
+      --surface:   #191a1b;
+      --surface2:  #28282c;
+      --text-1:    #f7f8f8;
+      --text-2:    #d0d6e0;
+      --text-3:    #8a8f98;
+      --text-4:    #62666d;
+      --accent:    #5e6ad2;
+      --accent-v:  #7170ff;
+      --accent-h:  #828fff;
+      --green:     #10b981;
+      --red:       #ef4444;
+      --amber:     #f59e0b;
+      --border:    rgba(255,255,255,0.08);
+      --border-s:  rgba(255,255,255,0.05);
+      --mono:      'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      font-feature-settings: 'cv01', 'ss03';
+      background: var(--bg);
+      color: var(--text-2);
+      min-height: 100dvh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Scrollbar ───────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 99px; }
+
+    /* ── Navigation ──────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      height: 56px;
+      background: rgba(8,9,10,0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-s);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+    }
+
+    .nav-inner {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-mark {
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .logo-mark svg { width: 16px; height: 16px; color: #fff; }
+
+    .logo-name {
+      font-size: 15px;
+      font-weight: 510;
+      color: var(--text-1);
+      letter-spacing: -0.165px;
+    }
+
+    .nav-badge {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--green);
+      background: rgba(16,185,129,0.12);
+      border: 1px solid rgba(16,185,129,0.2);
+      border-radius: 4px;
+      padding: 1px 6px;
+      letter-spacing: 0.02em;
+    }
+
+    .nav-spacer { flex: 1; }
+
+    .btn-ghost {
+      font-size: 13px;
+      font-weight: 510;
+      font-feature-settings: 'cv01', 'ss03';
+      color: var(--text-3);
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.05); color: var(--text-1); }
+    .btn-ghost svg { width: 14px; height: 14px; }
+
+    .btn-primary {
+      font-size: 13px;
+      font-weight: 510;
+      font-feature-settings: 'cv01', 'ss03';
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: 6px;
+      padding: 5px 14px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-primary:hover { background: var(--accent-v); }
+
+    /* ── Hero ────────────────────────────────────────────── */
+    .hero {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 72px 24px 56px;
+      text-align: center;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-4);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+
+    .hero-eyebrow-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      flex-shrink: 0;
+    }
+
+    .hero-headline {
+      font-size: clamp(32px, 5vw, 48px);
+      font-weight: 510;
+      color: var(--text-1);
+      line-height: 1.08;
+      letter-spacing: -1.056px;
+      margin-bottom: 20px;
+    }
+
+    .hero-headline em {
+      font-style: normal;
+      color: var(--accent-v);
+    }
+
+    .hero-sub {
+      font-size: 17px;
+      font-weight: 400;
+      color: var(--text-3);
+      line-height: 1.6;
+      max-width: 480px;
+      margin: 0 auto 36px;
+    }
+
+    /* ── Key banner ──────────────────────────────────────── */
+    #key-banner {
+      display: none;
+      max-width: 900px;
+      margin: 0 auto 8px;
+      padding: 0 24px;
+    }
+
+    .key-banner-inner {
+      background: rgba(94,106,210,0.08);
+      border: 1px solid rgba(94,106,210,0.2);
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .key-banner-inner:hover { background: rgba(94,106,210,0.12); }
+    .key-banner-inner svg { width: 16px; height: 16px; color: var(--accent-v); flex-shrink: 0; }
+    .key-banner-text { font-size: 13px; color: var(--text-2); flex: 1; }
+    .key-banner-cta { font-size: 12px; color: var(--accent-v); white-space: nowrap; }
+
+    /* ── Main layout ─────────────────────────────────────── */
+    .main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* ── Upload card ─────────────────────────────────────── */
+    .card {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-s);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 590;
+      color: var(--text-1);
+      letter-spacing: -0.13px;
+    }
+
+    .card-body { padding: 20px; }
+
+    /* ── Drop zone ───────────────────────────────────────── */
+    .drop-zone {
+      border: 1.5px dashed rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      margin-bottom: 16px;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent-v);
+      background: rgba(113,112,255,0.04);
+    }
+    .drop-zone-icon {
+      width: 36px;
+      height: 36px;
+      margin: 0 auto 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-4);
+    }
+    .drop-zone-icon svg { width: 18px; height: 18px; }
+    .drop-zone-label { font-size: 13px; color: var(--text-3); margin-bottom: 4px; }
+    .drop-zone-label strong { color: var(--accent-v); font-weight: 510; }
+    .drop-zone-sub { font-size: 11px; font-family: var(--mono); color: var(--text-4); }
+
+    #file-input { display: none; }
+
+    .divider-text {
+      text-align: center;
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--text-4);
+      margin: 0 0 16px;
+      position: relative;
+    }
+    .divider-text::before, .divider-text::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: calc(50% - 24px);
+      height: 1px;
+      background: var(--border-s);
+    }
+    .divider-text::before { left: 0; }
+    .divider-text::after { right: 0; }
+
+    textarea {
+      width: 100%;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-2);
+      resize: vertical;
+      min-height: 120px;
+      transition: border-color 0.15s;
+      outline: none;
+    }
+    textarea::placeholder { color: var(--text-4); }
+    textarea:focus { border-color: rgba(113,112,255,0.4); }
+
+    .action-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 16px;
+      gap: 12px;
+    }
+
+    .char-count { font-size: 11px; font-family: var(--mono); color: var(--text-4); }
+
+    .btn-analyze {
+      font-size: 13px;
+      font-weight: 510;
+      font-feature-settings: 'cv01', 'ss03';
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: 6px;
+      padding: 8px 20px;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    .btn-analyze:hover:not(:disabled) { background: var(--accent-v); }
+    .btn-analyze:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-analyze svg { width: 14px; height: 14px; }
+
+    /* ── Spinner ─────────────────────────────────────────── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    /* ── Results ─────────────────────────────────────────── */
+    #results { margin-top: 20px; display: none; }
+
+    /* Summary bar */
+    .summary-bar {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .summary-stat { display: flex; flex-direction: column; gap: 3px; }
+    .summary-val {
+      font-size: 22px;
+      font-weight: 590;
+      color: var(--text-1);
+      letter-spacing: -0.5px;
+      line-height: 1;
+    }
+    .summary-val.green { color: var(--green); }
+    .summary-val.red { color: var(--red); }
+    .summary-label { font-size: 11px; font-family: var(--mono); color: var(--text-4); }
+
+    .summary-divider {
+      width: 1px; height: 36px;
+      background: var(--border-s);
+    }
+
+    .summary-spacer { flex: 1; }
+
+    /* Flags */
+    .flags-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+
+    .flag-item {
+      background: rgba(255,255,255,0.015);
+      border: 1px solid var(--border-s);
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      transition: background 0.1s;
+    }
+    .flag-item:hover { background: rgba(255,255,255,0.025); }
+
+    .flag-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+    .flag-dot.red    { background: var(--red); }
+    .flag-dot.amber  { background: var(--amber); }
+    .flag-dot.blue   { background: var(--accent-v); }
+    .flag-dot.green  { background: var(--green); }
+
+    .flag-content { flex: 1; min-width: 0; }
+    .flag-title {
+      font-size: 13px;
+      font-weight: 510;
+      color: var(--text-1);
+      letter-spacing: -0.13px;
+      margin-bottom: 3px;
+    }
+    .flag-desc { font-size: 12px; color: var(--text-3); line-height: 1.5; }
+
+    .flag-amount {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .flag-amount.red { color: var(--red); }
+    .flag-amount.amber { color: var(--amber); }
+    .flag-amount.green { color: var(--green); }
+
+    .flag-badge {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .flag-badge.overcharge { color: var(--red); background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); }
+    .flag-badge.duplicate  { color: var(--amber); background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); }
+    .flag-badge.verify     { color: var(--accent-v); background: rgba(113,112,255,0.1); border: 1px solid rgba(113,112,255,0.2); }
+    .flag-badge.ok         { color: var(--green); background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); }
+
+    /* Dispute letter */
+    .dispute-card { margin-top: 0; }
+
+    .dispute-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-s);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .dispute-body {
+      padding: 20px;
+    }
+
+    pre.letter {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-2);
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(255,255,255,0.015);
+      border: 1px solid var(--border-s);
+      border-radius: 8px;
+      padding: 16px;
+      max-height: 340px;
+      overflow-y: auto;
+    }
+
+    .copy-btn {
+      font-size: 12px;
+      font-weight: 510;
+      color: var(--text-3);
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 4px 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .copy-btn:hover { color: var(--text-1); background: rgba(255,255,255,0.04); }
+    .copy-btn svg { width: 12px; height: 12px; }
+
+    /* ── Modal ───────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,0.8);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: rgba(0,0,0,0.5) 0px 20px 60px;
+    }
+
+    .modal-head {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-s);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title { font-size: 14px; font-weight: 590; color: var(--text-1); }
+
+    .modal-close {
+      width: 26px; height: 26px;
+      background: transparent;
+      border: none;
+      border-radius: 5px;
+      color: var(--text-4);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    .modal-close:hover { background: rgba(255,255,255,0.05); color: var(--text-2); }
+    .modal-close svg { width: 14px; height: 14px; }
+
+    .modal-body { padding: 20px; }
+
+    .form-label {
+      font-size: 12px;
+      font-weight: 510;
+      color: var(--text-3);
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .form-input {
+      width: 100%;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 9px 12px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-1);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-input::placeholder { color: var(--text-4); }
+    .form-input:focus { border-color: rgba(113,112,255,0.4); }
+
+    .form-help {
+      font-size: 11px;
+      color: var(--text-4);
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+    .form-help a { color: var(--accent-v); text-decoration: none; }
+    .form-help a:hover { text-decoration: underline; }
+
+    .modal-foot {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border-s);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    /* ── Error state ─────────────────────────────────────── */
+    .error-box {
+      background: rgba(239,68,68,0.06);
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #fca5a5;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .error-box svg { width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px; color: var(--red); }
+
+    /* ── Skeleton loader ─────────────────────────────────── */
+    @keyframes shimmer {
+      0% { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+    .skel {
+      background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.04) 75%);
+      background-size: 800px 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 5px;
+    }
+
+    .skel-line { height: 12px; margin-bottom: 10px; }
+
+    /* ── Mobile ──────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .hero { padding: 48px 16px 40px; }
+      .main { padding: 0 16px 60px; }
+      nav { padding: 0 16px; }
+      .summary-bar { gap: 12px; }
+      .summary-divider { display: none; }
+    }
   </style>
 </head>
-<body class="gradient-bg min-h-screen text-slate-100">
+<body>
 
-<!-- HEADER -->
-<header class="border-b border-slate-700/50 px-4 py-4">
-  <div class="max-w-2xl mx-auto flex items-center gap-3">
-    <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-lg">💊</div>
-    <div>
-      <h1 class="text-base font-bold text-white leading-tight">MedBill Bot</h1>
-      <p class="text-xs text-slate-400">AI Medical Bill Analyzer</p>
+<!-- ── Navigation ──────────────────────────────────────── -->
+<nav>
+  <div class="nav-inner">
+    <div class="logo-mark">
+      <!-- heartbeat / health icon -->
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M1 8h3l2-5 3 9 2-4h4"/>
+      </svg>
     </div>
-    <div class="ml-auto flex items-center gap-2">
-      <span class="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded-full">Free</span>
-      <button onclick="openKeyModal()" title="API key settings"
-        class="icon-btn w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white">⚙️</button>
-    </div>
+    <span class="logo-name">MedBill</span>
+    <span class="nav-badge">FREE</span>
+    <div class="nav-spacer"></div>
+    <button class="btn-ghost" onclick="openKeyModal()">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="8" cy="8" r="2.5"/><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14M3.515 3.515l1.06 1.06M11.424 11.424l1.06 1.06M3.515 12.485l1.06-1.06M11.424 4.576l1.06-1.06"/>
+      </svg>
+      API Key
+    </button>
   </div>
+</nav>
+
+<!-- ── Hero ────────────────────────────────────────────── -->
+<header class="hero">
+  <div class="hero-eyebrow">
+    <span class="hero-eyebrow-dot"></span>
+    Medical billing errors affect 80% of bills
+  </div>
+  <h1 class="hero-headline">Stop paying for<br><em>mistakes you didn't make</em></h1>
+  <p class="hero-sub">Upload or paste your medical bill. AI flags every error, explains every charge, and drafts your dispute letter.</p>
 </header>
 
-<!-- API KEY BANNER -->
-<div id="key-banner" class="hidden px-4 pt-4 max-w-2xl mx-auto">
-  <button onclick="openKeyModal()"
-    class="w-full text-left bg-indigo-500/10 border border-indigo-500/30 rounded-xl px-4 py-3 flex items-center gap-3 hover:bg-indigo-500/15 transition-all">
-    <span class="text-lg">🔑</span>
-    <span class="text-sm text-indigo-200 flex-1">No API key set — add yours to get started</span>
-    <span class="text-xs text-indigo-300 whitespace-nowrap">Add key →</span>
-  </button>
+<!-- ── API Key Banner ───────────────────────────────────── -->
+<div id="key-banner">
+  <div class="key-banner-inner" onclick="openKeyModal()">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10.5 1.5a4 4 0 0 1 0 5.657L4.414 13.243A2 2 0 0 1 3 13.828H2a1 1 0 0 1-1-1v-1a2 2 0 0 1 .586-1.414l6.157-6.157A4 4 0 0 1 10.5 1.5z"/>
+      <circle cx="11" cy="5" r="1" fill="currentColor" stroke="none"/>
+    </svg>
+    <span class="key-banner-text">No API key set — analysis runs in your browser using your Anthropic key</span>
+    <span class="key-banner-cta">Add key</span>
+  </div>
 </div>
 
-<!-- HERO -->
-<section class="px-4 pt-8 pb-6 max-w-2xl mx-auto text-center">
-  <h2 class="text-2xl font-bold text-white mb-2">Stop paying <span class="text-red-400">overcharged</span> medical bills</h2>
-  <p class="text-slate-400 text-sm leading-relaxed">Paste your bill or upload a PDF. AI finds errors, explains every charge, and writes your dispute letter — in seconds.</p>
-  <div class="flex justify-center gap-6 mt-4 text-xs text-slate-500">
-    <span class="flex items-center gap-1">🔒 Private</span>
-    <span class="flex items-center gap-1">⚡ Instant</span>
-    <span class="flex items-center gap-1">✉️ Dispute letter included</span>
-  </div>
-</section>
+<!-- ── Main ─────────────────────────────────────────────── -->
+<main class="main">
 
-<!-- INPUT CARD -->
-<main class="px-4 max-w-2xl mx-auto pb-16">
-  <div class="card rounded-2xl p-5 mb-4">
-    <!-- Tabs -->
-    <div class="flex gap-1 mb-4 bg-slate-800/60 p-1 rounded-xl">
-      <button id="tab-paste" onclick="switchTab('paste')"
-        class="tab-btn flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all bg-indigo-600 text-white">
-        📋 Paste Text
-      </button>
-      <button id="tab-upload" onclick="switchTab('upload')"
-        class="tab-btn flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all text-slate-400 hover:text-white">
-        📁 Upload PDF
-      </button>
+  <!-- Upload card -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Your bill</span>
+      <span id="file-name" style="font-size:11px;font-family:var(--mono);color:var(--text-4)"></span>
     </div>
+    <div class="card-body">
 
-    <!-- Paste Tab -->
-    <div id="pane-paste">
-      <textarea id="bill-text" rows="8"
-        class="w-full bg-slate-800/60 border border-slate-600/40 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500 resize-none"
-        placeholder="Paste your medical bill, EOB, or even just describe the charges...&#10;&#10;Example:&#10;Room &amp; Board 3 days — $7,200&#10;Lab Work (CBC) — $840&#10;Physician Visit — $1,200&#10;Bandages (x4) — $320&#10;..."></textarea>
-    </div>
-
-    <!-- Upload Tab -->
-    <div id="pane-upload" class="hidden">
-      <div id="drop-zone" onclick="document.getElementById('file-input').click()"
-        class="drop-zone border-2 border-dashed border-slate-600 rounded-xl p-8 text-center cursor-pointer transition-all hover:border-indigo-500 hover:bg-indigo-500/5">
-        <div class="text-3xl mb-2">📄</div>
-        <p class="text-sm font-medium text-slate-300">Drop your PDF here or tap to browse</p>
-        <p class="text-xs text-slate-500 mt-1">PDF or TXT • Max 15 MB</p>
-        <div id="file-name" class="hidden mt-3 text-xs text-indigo-400 font-medium"></div>
+      <!-- Drop zone -->
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="drop-zone-icon">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 13V4m-4 5 4-4 4 4"/><path d="M3 15h14"/>
+          </svg>
+        </div>
+        <p class="drop-zone-label">Drop PDF here or <strong>browse</strong></p>
+        <p class="drop-zone-sub">PDF up to 20MB</p>
       </div>
-      <input id="file-input" type="file" accept=".pdf,.txt" class="hidden" onchange="handleFileSelect(this)" />
-    </div>
+      <input type="file" id="file-input" accept=".pdf" />
 
-    <!-- Analyze Button -->
-    <button id="analyze-btn" onclick="analyze()"
-      class="w-full mt-4 py-3.5 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-      <span id="btn-text">🔍 Analyze My Bill</span>
-      <span id="btn-spinner" class="hidden">
-        <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+      <p class="divider-text">or paste text</p>
+
+      <textarea id="bill-text" placeholder="Paste bill text, EOB, or itemized charges here..."></textarea>
+
+      <div class="action-row">
+        <span class="char-count" id="char-count">0 chars</span>
+        <button class="btn-analyze" id="analyze-btn" onclick="analyze()" disabled>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 3H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1z"/><path d="M5 7h6M5 10h4"/>
+          </svg>
+          Analyze bill
+        </button>
+      </div>
+
+      <div id="error-box" class="error-box" style="display:none">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="8" cy="8" r="7"/><path d="M8 5v3.5M8 11h.01"/>
         </svg>
-        Analyzing...
-      </span>
-    </button>
-    <p id="error-msg" class="hidden mt-3 text-xs text-red-400 text-center bg-red-500/10 border border-red-500/20 rounded-lg py-2 px-3"></p>
-    <p class="mt-3 text-xs text-slate-500 text-center">Analyzed with <span class="text-slate-400">claude-haiku-4-5-20251001</span>, called directly from your browser using your own API key.</p>
+        <span id="error-msg">Something went wrong.</span>
+      </div>
+    </div>
   </div>
 
-  <!-- RESULTS (hidden until analysis) -->
-  <div id="results" class="hidden space-y-4">
+  <!-- Results -->
+  <div id="results">
 
-    <!-- Savings Hero -->
-    <div class="card rounded-2xl p-5 text-center">
-      <p class="text-xs text-slate-400 uppercase tracking-widest mb-1">Potential Savings Found</p>
-      <p id="savings-amount" class="text-5xl font-bold savings-number mb-1">$0</p>
-      <div class="flex justify-center gap-6 mt-3 text-xs">
-        <div class="text-center">
-          <p class="text-slate-400">Billed</p>
-          <p id="total-charged" class="text-white font-semibold">—</p>
-        </div>
-        <div class="text-slate-600">→</div>
-        <div class="text-center">
-          <p class="text-slate-400">Fair Price</p>
-          <p id="fair-price" class="text-emerald-400 font-semibold">—</p>
-        </div>
+    <!-- Summary bar -->
+    <div class="summary-bar" id="summary-bar">
+      <div class="summary-stat">
+        <span class="summary-val red" id="s-overcharge">—</span>
+        <span class="summary-label">potential overcharge</span>
+      </div>
+      <div class="summary-divider"></div>
+      <div class="summary-stat">
+        <span class="summary-val" id="s-flags">—</span>
+        <span class="summary-label">items flagged</span>
+      </div>
+      <div class="summary-divider"></div>
+      <div class="summary-stat">
+        <span class="summary-val green" id="s-savings">—</span>
+        <span class="summary-label">estimated savings</span>
       </div>
     </div>
 
-    <!-- Summary -->
-    <div class="card rounded-2xl p-5">
-      <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">📋 Summary</h3>
-      <p id="summary-text" class="text-sm text-slate-300 leading-relaxed"></p>
-      <div id="charity-badge" class="hidden mt-3"></div>
+    <!-- Flags -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header">
+        <span class="card-title">Findings</span>
+        <span id="flag-count" style="font-size:11px;font-family:var(--mono);color:var(--text-4)"></span>
+      </div>
+      <div class="card-body" style="padding:12px">
+        <div class="flags-list" id="flags-list"></div>
+      </div>
     </div>
 
-    <!-- Line Items -->
-    <div class="card rounded-2xl p-5">
-      <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">🧾 Line by Line</h3>
-      <div id="line-items" class="space-y-2"></div>
-    </div>
-
-    <!-- Action Items -->
-    <div class="card rounded-2xl p-5">
-      <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">✅ What To Do Next</h3>
-      <ol id="action-items" class="space-y-2 list-none"></ol>
-    </div>
-
-    <!-- Dispute Letter -->
-    <div class="card rounded-2xl p-5">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-widest">✉️ Dispute Letter</h3>
-        <button onclick="copyLetter()" id="copy-btn"
-          class="text-xs bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/30 px-3 py-1 rounded-lg transition-all">
+    <!-- Dispute letter -->
+    <div class="card dispute-card">
+      <div class="dispute-header">
+        <span class="card-title">Dispute letter</span>
+        <button class="copy-btn" onclick="copyLetter()">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="6" y="6" width="8" height="8" rx="1"/><path d="M10 6V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h2"/>
+          </svg>
           Copy
         </button>
       </div>
-      <div class="bg-slate-800/60 rounded-xl p-4 border border-slate-600/30">
-        <pre id="dispute-letter" class="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed font-mono"></pre>
+      <div class="dispute-body">
+        <pre class="letter" id="dispute-letter"></pre>
       </div>
-      <p class="text-xs text-slate-500 mt-2">Replace the <span class="text-indigo-300">[bracketed placeholders]</span> with your actual information before sending.</p>
     </div>
-
-    <!-- Analyze Again -->
-    <button onclick="reset()"
-      class="w-full py-3 rounded-xl border border-slate-600 text-slate-400 hover:text-white hover:border-slate-400 text-sm transition-all">
-      ← Analyze Another Bill
-    </button>
 
   </div>
 </main>
 
-<!-- API KEY MODAL -->
-<div id="key-modal" class="hidden fixed inset-0 modal-overlay flex items-center justify-center px-4 z-50">
-  <div class="card rounded-2xl p-5 w-full max-w-sm">
-    <h3 class="text-sm font-semibold text-white flex items-center gap-2 mb-1">🔑 Your Anthropic API Key</h3>
-    <div class="border-t border-slate-700/50 my-3"></div>
-    <div class="flex gap-2">
-      <input id="key-input" type="password" placeholder="sk-ant-..."
-        class="flex-1 bg-slate-800/60 border border-slate-600/40 rounded-xl px-3 py-2 text-sm text-slate-200 placeholder-slate-500" />
-      <button onclick="toggleKeyVisibility()" id="key-toggle-btn"
-        class="w-10 h-10 flex-shrink-0 rounded-xl border border-slate-600/40 bg-slate-800/60 flex items-center justify-center text-slate-400 hover:text-white">👁</button>
+<!-- ── API Key Modal ─────────────────────────────────────── -->
+<div class="modal-overlay" id="key-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Anthropic API Key</span>
+      <button class="modal-close" onclick="closeKeyModal()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 4l8 8M12 4l-8 8"/>
+        </svg>
+      </button>
     </div>
-    <p class="text-xs text-slate-500 mt-2 leading-relaxed">Stored locally only. Never sent to our servers.</p>
-    <p id="key-modal-error" class="hidden mt-2 text-xs text-red-400"></p>
-    <div class="flex items-center justify-between gap-3 mt-4">
-      <button onclick="saveKey()" class="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-all">Save Key</button>
-      <button onclick="closeKeyModal()" class="flex-1 py-2.5 rounded-xl border border-slate-600 text-slate-400 hover:text-white text-sm transition-all">Cancel</button>
+    <div class="modal-body">
+      <label class="form-label" for="api-key-input">Your key</label>
+      <input class="form-input" id="api-key-input" type="password" placeholder="sk-ant-..." />
+      <p class="form-help">
+        Stored in your browser only, never sent to our servers. Analysis runs directly against the
+        <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic API</a>.
+      </p>
     </div>
-    <div class="flex items-center justify-between mt-3">
-      <a href="https://console.anthropic.com" target="_blank" rel="noopener" class="text-xs text-indigo-400 hover:text-indigo-300">Get a key: console.anthropic.com</a>
-      <a href="#" id="remove-key-link" onclick="removeKey(); return false;" class="hidden text-xs text-red-400 hover:text-red-300">Remove Key</a>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeKeyModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveKey()">Save key</button>
     </div>
   </div>
 </div>
 
 <script>
-  const KEY_STORAGE = 'anthropic_api_key';
-  const MODEL = 'claude-haiku-4-5-20251001';
-  const MAX_BILL_CHARS = 30000;
+/* ── State ─────────────────────────────────────────────── */
+let billText = '';
+let pdfExtracted = '';
+let apiKey = localStorage.getItem('anthropic_key') || '';
 
-  const SYSTEM_PROMPT = `You are a meticulous medical billing advocate who helps patients understand and dispute confusing medical bills and Explanations of Benefits (EOBs).
+/* ── Init ──────────────────────────────────────────────── */
+window.addEventListener('DOMContentLoaded', () => {
+  checkKeyBanner();
 
-For the bill text you are given:
-1. Explain every distinct line item in plain, friendly English (no jargon).
-2. Flag potential issues:
-   - OVERCHARGE: the amount looks unusually high compared to typical fair market/Medicare-adjacent rates.
-   - DUPLICATE: the same service appears to be billed more than once.
-   - VERIFY: unclear or unbundled charges the patient should ask the provider to itemize/justify.
-   - null: charge looks normal and correctly billed.
-3. Estimate a "fair price" total based on typical reasonable rates, and calculate potential savings versus the charged total. If the bill doesn't include enough information to compute real dollar totals, make clearly-labeled reasonable estimates rather than refusing.
-4. Assess charity care / financial assistance eligibility only from what's stated; if unknown, say "unknown".
-5. Draft a complete, professional, copy-paste-ready dispute letter addressed to the billing department, referencing the specific flagged line items and requesting an itemized bill and review. Use placeholders like [Your Name], [Account Number], [Date] where patient-specific info wasn't provided.
-6. Give a short, concrete, ordered list of action items the patient should take.
+  const ta = document.getElementById('bill-text');
+  ta.addEventListener('input', () => {
+    billText = ta.value.trim();
+    document.getElementById('char-count').textContent = ta.value.length + ' chars';
+    updateAnalyzeBtn();
+  });
 
-Always call the submit_bill_analysis tool with your findings. Be specific and cite the actual charges from the input. Never fabricate charges that are not present in the input.`;
-
-  const ANALYSIS_TOOL = {
-    name: "submit_bill_analysis",
-    description: "Submit the structured analysis of a medical bill or EOB.",
-    input_schema: {
-      type: "object",
-      properties: {
-        summary: {
-          type: "string",
-          description: "One paragraph, plain English summary a non-expert patient can understand.",
-        },
-        line_items: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              charge: { type: "string" },
-              amount: { type: "string" },
-              explanation: {
-                type: "string",
-                description: "Plain English explanation of what this charge is for.",
-              },
-              flag: {
-                type: ["string", "null"],
-                enum: ["OVERCHARGE", "DUPLICATE", "VERIFY", null],
-              },
-              flag_reason: {
-                type: ["string", "null"],
-                description: "Why this item was flagged, or null if not flagged.",
-              },
-            },
-            required: ["charge", "amount", "explanation", "flag", "flag_reason"],
-          },
-        },
-        total_charged: { type: "string" },
-        estimated_fair_price: { type: "string" },
-        potential_savings: { type: "string" },
-        charity_care_eligible: {
-          type: ["boolean", "string"],
-          description: 'true, false, or "unknown" if not enough information is provided.',
-        },
-        dispute_letter: {
-          type: "string",
-          description: "Full, ready-to-send dispute letter text, copy-paste ready with placeholders like [Your Name] where patient-specific info is unknown.",
-        },
-        action_items: {
-          type: "array",
-          items: { type: "string" },
-          description: "Concrete next steps the patient should take, in order.",
-        },
-      },
-      required: [
-        "summary",
-        "line_items",
-        "total_charged",
-        "estimated_fair_price",
-        "potential_savings",
-        "charity_care_eligible",
-        "dispute_letter",
-        "action_items",
-      ],
-    },
-  };
-
-  let selectedFile = null;
-  let currentTab = 'paste';
-
-  function getKey() { return localStorage.getItem(KEY_STORAGE) || ''; }
-
-  function refreshKeyUI() {
-    const hasKey = !!getKey();
-    document.getElementById('key-banner').classList.toggle('hidden', hasKey);
-    document.getElementById('remove-key-link').classList.toggle('hidden', !hasKey);
-  }
-
-  function openKeyModal() {
-    document.getElementById('key-input').value = getKey();
-    document.getElementById('key-modal-error').classList.add('hidden');
-    document.getElementById('key-modal').classList.remove('hidden');
-  }
-
-  function closeKeyModal() {
-    document.getElementById('key-modal').classList.add('hidden');
-  }
-
-  function toggleKeyVisibility() {
-    const input = document.getElementById('key-input');
-    const btn = document.getElementById('key-toggle-btn');
-    if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
-    else { input.type = 'password'; btn.textContent = '👁'; }
-  }
-
-  function saveKey() {
-    const val = document.getElementById('key-input').value.trim();
-    if (!val) {
-      const err = document.getElementById('key-modal-error');
-      err.textContent = 'Please enter a key.';
-      err.classList.remove('hidden');
-      return;
-    }
-    localStorage.setItem(KEY_STORAGE, val);
-    refreshKeyUI();
-    closeKeyModal();
-  }
-
-  function removeKey() {
-    localStorage.removeItem(KEY_STORAGE);
-    refreshKeyUI();
-    closeKeyModal();
-  }
-
-  function switchTab(tab) {
-    currentTab = tab;
-    document.getElementById('pane-paste').classList.toggle('hidden', tab !== 'paste');
-    document.getElementById('pane-upload').classList.toggle('hidden', tab !== 'upload');
-    document.getElementById('tab-paste').className = tab === 'paste'
-      ? 'tab-btn flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all bg-indigo-600 text-white'
-      : 'tab-btn flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all text-slate-400 hover:text-white';
-    document.getElementById('tab-upload').className = tab === 'upload'
-      ? 'tab-btn flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all bg-indigo-600 text-white'
-      : 'tab-btn flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all text-slate-400 hover:text-white';
-  }
-
-  function handleFileSelect(input) {
-    if (input.files && input.files[0]) {
-      selectedFile = input.files[0];
-      const fn = document.getElementById('file-name');
-      fn.textContent = '📎 ' + selectedFile.name;
-      fn.classList.remove('hidden');
-    }
-  }
-
-  // Drag & drop
+  // Drag and drop
   const dz = document.getElementById('drop-zone');
   dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
   dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
-  dz.addEventListener('drop', e => {
-    e.preventDefault(); dz.classList.remove('drag-over');
-    const f = e.dataTransfer.files[0];
-    if (f) { selectedFile = f; const fn = document.getElementById('file-name'); fn.textContent = '📎 ' + f.name; fn.classList.remove('hidden'); }
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+
+  document.getElementById('file-input').addEventListener('change', e => {
+    if (e.target.files[0]) handleFile(e.target.files[0]);
   });
 
-  function setLoading(on) {
-    document.getElementById('btn-text').classList.toggle('hidden', on);
-    document.getElementById('btn-spinner').classList.toggle('hidden', !on);
-    document.getElementById('analyze-btn').disabled = on;
+  // Pre-fill key
+  if (apiKey) document.getElementById('api-key-input').value = apiKey;
+});
+
+function checkKeyBanner() {
+  document.getElementById('key-banner').style.display = apiKey ? 'none' : 'block';
+}
+
+function updateAnalyzeBtn() {
+  const has = (billText.length > 20) || (pdfExtracted.length > 20);
+  document.getElementById('analyze-btn').disabled = !has;
+}
+
+/* ── File handling (PDF extract via backend) ───────────── */
+async function handleFile(file) {
+  if (!file || !file.name.endsWith('.pdf')) { showError('Please upload a PDF file.'); return; }
+  hideError();
+  document.getElementById('file-name').textContent = file.name;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch('/extract', { method: 'POST', body: formData });
+    if (!res.ok) throw new Error('Extraction failed');
+    const data = await res.json();
+    pdfExtracted = data.text || '';
+    document.getElementById('bill-text').value = pdfExtracted;
+    billText = pdfExtracted;
+    document.getElementById('char-count').textContent = pdfExtracted.length + ' chars';
+    updateAnalyzeBtn();
+  } catch (e) {
+    showError('Could not read PDF. Try pasting the text manually.');
   }
+}
 
-  function showError(msg) {
-    const el = document.getElementById('error-msg');
-    el.textContent = msg; el.classList.remove('hidden');
-  }
+/* ── Analysis ──────────────────────────────────────────── */
+async function analyze() {
+  if (!apiKey) { openKeyModal(); return; }
 
-  function hideError() { document.getElementById('error-msg').classList.add('hidden'); }
+  const text = billText || pdfExtracted;
+  if (!text) return;
 
-  async function getBillText() {
-    if (currentTab === 'upload' && selectedFile) {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      const res = await fetch('/extract', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Could not read that file.');
-      return data.text;
+  const btn = document.getElementById('analyze-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div>Analyzing...';
+  hideError();
+
+  // Show skeleton
+  document.getElementById('results').style.display = 'block';
+  showSkeleton();
+
+  const prompt = `You are a medical billing expert. Analyze this medical bill and return a JSON object with:
+{
+  "summary": {
+    "total_billed": "$X,XXX.00",
+    "potential_overcharge": "$X,XXX.00",
+    "estimated_savings": "$X,XXX.00",
+    "flags_count": N
+  },
+  "flags": [
+    {
+      "type": "overcharge|duplicate|verify|ok",
+      "title": "Short title of the issue",
+      "description": "1-2 sentence explanation",
+      "amount": "$XXX.00 or null"
     }
-    const txt = document.getElementById('bill-text').value.trim();
-    if (!txt) throw new Error('Please paste your bill text or upload a file first.');
-    return txt;
-  }
+  ],
+  "dispute_letter": "Full dispute letter text ready to send..."
+}
 
-  async function callClaude(billText, apiKey) {
+Medical bill:
+${text}
+
+Return only valid JSON, no markdown, no explanation.`;
+
+  try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
+        'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 4096,
-        system: SYSTEM_PROMPT,
-        tools: [ANALYSIS_TOOL],
-        tool_choice: { type: 'tool', name: 'submit_bill_analysis' },
-        messages: [
-          { role: 'user', content: `Here is the medical bill / EOB to analyze:\n\n${billText}` },
-        ],
-      }),
+        messages: [{ role: 'user', content: prompt }]
+      })
     });
-    const data = await res.json();
+
     if (!res.ok) {
-      throw new Error(data?.error?.message || 'The Anthropic API returned an error. Check your key and try again.');
-    }
-    const toolBlock = (data.content || []).find(b => b.type === 'tool_use');
-    if (!toolBlock) throw new Error("We couldn't generate a structured analysis for this bill. Please try again.");
-    const result = toolBlock.input;
-    if (typeof result.charity_care_eligible === 'string' &&
-        ['true', 'false'].includes(result.charity_care_eligible.toLowerCase())) {
-      result.charity_care_eligible = result.charity_care_eligible.toLowerCase() === 'true';
-    }
-    return result;
-  }
-
-  async function analyze() {
-    hideError();
-    const apiKey = getKey();
-    if (!apiKey) { openKeyModal(); return; }
-
-    setLoading(true);
-    try {
-      let billText = await getBillText();
-      billText = billText.trim();
-      if (billText.length > MAX_BILL_CHARS) billText = billText.slice(0, MAX_BILL_CHARS);
-      const result = await callClaude(billText, apiKey);
-      renderResults(result);
-    } catch (e) {
-      showError(e.message || 'Something went wrong. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function renderResults(d) {
-    // Savings hero
-    document.getElementById('savings-amount').textContent = d.potential_savings || '—';
-    document.getElementById('total-charged').textContent = d.total_charged || '—';
-    document.getElementById('fair-price').textContent = d.estimated_fair_price || '—';
-
-    // Summary
-    document.getElementById('summary-text').textContent = d.summary || '';
-
-    // Charity care badge
-    const cb = document.getElementById('charity-badge');
-    if (d.charity_care_eligible === true) {
-      cb.innerHTML = '<span class="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full">✅ You may qualify for charity care / financial assistance</span>';
-      cb.classList.remove('hidden');
-    } else if (d.charity_care_eligible === false) {
-      cb.innerHTML = '<span class="text-xs bg-slate-700/40 text-slate-400 border border-slate-600/30 px-3 py-1 rounded-full">ℹ️ Charity care not likely applicable based on this bill</span>';
-      cb.classList.remove('hidden');
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `API error ${res.status}`);
     }
 
-    // Line items
-    const li = document.getElementById('line-items');
-    li.innerHTML = (d.line_items || []).map(item => {
-      const flagClass = item.flag === 'OVERCHARGE' ? 'flag-overcharge'
-                      : item.flag === 'DUPLICATE'  ? 'flag-duplicate'
-                      : item.flag === 'VERIFY'     ? 'flag-verify'
-                      : 'flag-ok';
-      const badge = item.flag
-        ? `<span class="ml-2 text-xs px-2 py-0.5 rounded-full font-semibold ${
-            item.flag === 'OVERCHARGE' ? 'bg-red-500/20 text-red-400' :
-            item.flag === 'DUPLICATE'  ? 'bg-amber-500/20 text-amber-400' :
-            'bg-indigo-500/20 text-indigo-400'}">${item.flag}</span>`
-        : '<span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">OK</span>';
-      return `<div class="${flagClass} rounded-xl p-3">
-        <div class="flex items-start justify-between gap-2">
-          <div class="flex-1">
-            <div class="flex items-center flex-wrap gap-1">
-              <span class="text-sm font-medium text-white">${esc(item.charge)}</span>${badge}
-            </div>
-            <p class="text-xs text-slate-400 mt-0.5">${esc(item.explanation)}</p>
-            ${item.flag_reason ? `<p class="text-xs mt-1 ${item.flag==='OVERCHARGE'?'text-red-300':item.flag==='DUPLICATE'?'text-amber-300':'text-indigo-300'}">⚠️ ${esc(item.flag_reason)}</p>` : ''}
-          </div>
-          <span class="text-sm font-bold text-white whitespace-nowrap">${esc(item.amount)}</span>
-        </div>
-      </div>`;
-    }).join('');
-
-    // Action items
-    const ai = document.getElementById('action-items');
-    ai.innerHTML = (d.action_items || []).map((a, i) =>
-      `<li class="flex items-start gap-3 text-sm text-slate-300">
-        <span class="w-5 h-5 rounded-full bg-indigo-600/40 text-indigo-300 text-xs font-bold flex-shrink-0 flex items-center justify-center mt-0.5">${i+1}</span>
-        <span>${esc(a)}</span>
-      </li>`
-    ).join('');
-
-    // Dispute letter
-    document.getElementById('dispute-letter').textContent = d.dispute_letter || '';
-
-    // Show results, scroll up
-    document.getElementById('results').classList.remove('hidden');
-    document.querySelector('main').scrollIntoView({ behavior: 'smooth' });
+    const data = await res.json();
+    const raw = data.content[0].text.trim();
+    // Strip possible markdown fences
+    const json = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+    const result = JSON.parse(json);
+    renderResults(result);
+  } catch (e) {
+    hideSkeleton();
+    document.getElementById('results').style.display = 'none';
+    showError(e.message || 'Analysis failed. Check your API key and try again.');
+  } finally {
+    btn.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1z"/><path d="M5 7h6M5 10h4"/></svg>Analyze bill';
+    updateAnalyzeBtn();
   }
+}
 
-  function esc(s) {
-    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
+function renderResults(r) {
+  hideSkeleton();
 
-  async function copyLetter() {
-    const text = document.getElementById('dispute-letter').textContent;
-    await navigator.clipboard.writeText(text).catch(() => {});
-    const btn = document.getElementById('copy-btn');
-    btn.textContent = '✓ Copied!';
-    btn.classList.add('bg-emerald-600/30', 'text-emerald-300', 'border-emerald-500/30');
-    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('bg-emerald-600/30','text-emerald-300','border-emerald-500/30'); }, 2000);
-  }
+  // Summary
+  const s = r.summary || {};
+  document.getElementById('s-overcharge').textContent = s.potential_overcharge || '$0';
+  document.getElementById('s-flags').textContent = s.flags_count || (r.flags || []).length;
+  document.getElementById('s-savings').textContent = s.estimated_savings || '$0';
 
-  function reset() {
-    document.getElementById('results').classList.add('hidden');
-    document.getElementById('bill-text').value = '';
-    selectedFile = null;
-    document.getElementById('file-name').classList.add('hidden');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
+  // Flags
+  const list = document.getElementById('flags-list');
+  list.innerHTML = '';
+  const flags = r.flags || [];
+  document.getElementById('flag-count').textContent = flags.length + ' items';
 
-  refreshKeyUI();
+  const typeMap = {
+    overcharge: { dot: 'red', badge: 'overcharge', label: 'OVERCHARGE' },
+    duplicate:  { dot: 'amber', badge: 'duplicate', label: 'DUPLICATE' },
+    verify:     { dot: 'blue', badge: 'verify', label: 'VERIFY' },
+    ok:         { dot: 'green', badge: 'ok', label: 'OK' }
+  };
+
+  flags.forEach(f => {
+    const t = typeMap[f.type] || typeMap.verify;
+    const amountColor = f.type === 'overcharge' ? 'red' : f.type === 'duplicate' ? 'amber' : 'green';
+    const item = document.createElement('div');
+    item.className = 'flag-item';
+    item.innerHTML = `
+      <span class="flag-dot ${t.dot}"></span>
+      <div class="flag-content">
+        <div class="flag-title">${esc(f.title)}</div>
+        <div class="flag-desc">${esc(f.description)}</div>
+      </div>
+      ${f.amount ? `<span class="flag-amount ${amountColor}">${esc(f.amount)}</span>` : ''}
+      <span class="flag-badge ${t.badge}">${t.label}</span>
+    `;
+    list.appendChild(item);
+  });
+
+  // Dispute letter
+  document.getElementById('dispute-letter').textContent = r.dispute_letter || 'No letter generated.';
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ── Skeleton ──────────────────────────────────────────── */
+function showSkeleton() {
+  document.getElementById('s-overcharge').textContent = '—';
+  document.getElementById('s-flags').textContent = '—';
+  document.getElementById('s-savings').textContent = '—';
+
+  const list = document.getElementById('flags-list');
+  list.innerHTML = [80,60,70,55,65].map(w => `
+    <div class="flag-item">
+      <span class="flag-dot" style="background:var(--surface2)"></span>
+      <div class="flag-content">
+        <div class="skel skel-line" style="width:${w}%;margin-bottom:6px"></div>
+        <div class="skel skel-line" style="width:90%;height:10px"></div>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('dispute-letter').textContent = '';
+}
+function hideSkeleton() {}
+
+/* ── Helpers ───────────────────────────────────────────── */
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showError(msg) {
+  const b = document.getElementById('error-box');
+  document.getElementById('error-msg').textContent = msg;
+  b.style.display = 'flex';
+}
+function hideError() { document.getElementById('error-box').style.display = 'none'; }
+
+function copyLetter() {
+  const text = document.getElementById('dispute-letter').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 10L6 13.5l7.5-8"/></svg>Copied';
+    setTimeout(() => { btn.innerHTML = orig; }, 2000);
+  });
+}
+
+/* ── Modal ─────────────────────────────────────────────── */
+function openKeyModal() {
+  document.getElementById('api-key-input').value = apiKey;
+  document.getElementById('key-modal').classList.add('open');
+}
+function closeKeyModal() { document.getElementById('key-modal').classList.remove('open'); }
+
+function saveKey() {
+  const val = document.getElementById('api-key-input').value.trim();
+  apiKey = val;
+  if (val) localStorage.setItem('anthropic_key', val);
+  else localStorage.removeItem('anthropic_key');
+  closeKeyModal();
+  checkKeyBanner();
+}
+
+document.getElementById('key-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeKeyModal();
+});
 </script>
 </body>
 </html>

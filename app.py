@@ -68,13 +68,13 @@ def consume_usage(uid: str) -> dict:
 
 
 # ── Gemini ───────────────────────────────────────────────────
-PROMPT = """You are a senior medical billing auditor. Analyze the bill and return ONLY valid JSON — no markdown, no fences.
+PROMPT = """You are a senior medical billing auditor. Analyze the bill and return ONLY valid JSON — no markdown, no fences, no extra text.
 
 Shape:
 {
   "summary": {"total_billed":"$X","potential_overcharge":"$X","estimated_savings":"$X","flags_count":N},
-  "flags": [{"type":"overcharge|duplicate|verify|ok","title":"max 8 words","description":"1-2 sentences","amount":"$X or null"}],
-  "dispute_letter": "Full formal dispute letter. Use [YOUR NAME], [DATE], [PROVIDER NAME] placeholders."
+  "flags": [{"type":"overcharge|duplicate|verify|ok","title":"short title max 6 words","description":"1 sentence only","amount":"$X or null"}],
+  "dispute_letter": "Formal dispute letter under 400 words. Use [YOUR NAME], [DATE], [PROVIDER NAME] placeholders."
 }
 Types: overcharge=above typical rates, duplicate=billed twice, verify=needs clarification, ok=reasonable (1-2 items)."""
 
@@ -92,7 +92,7 @@ async def gemini(bill_text: str) -> dict:
     async with httpx.AsyncClient(timeout=60) as c:
         r = await c.post(GEMINI_URL, json={
             "contents": [{"parts": parts}],
-            "generationConfig": {"temperature": 0.2, "maxOutputTokens": 4096}
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 8192}
         })
     if r.status_code != 200:
         log.error(f"Gemini {r.status_code}: {r.text[:200]}")

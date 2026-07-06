@@ -1,334 +1,172 @@
-import os
-import time
-import logging
-import httpx
-import fitz
-from fastapi import FastAPI, File, UploadFile, HTTPException, Request, Depends
-from fastapi.responses import FileResponse, JSONResponse
+import os, time, base64, json, logging
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from fastapi import FastAPI, File, UploadFile, HTTPException, Request
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import google.auth.transport.requests
-import google.oauth2.id_token
+import httpx, fitz
+import google.auth.transport.requests, google.oauth2.id_token
 from google.cloud import firestore
-from datetime import datetime, timezone
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-logger = logging.getLogger("medbill-bot")
+log = logging.getLogger("billclear")
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "hermez-fdff9")
-FREE_LIMIT = int(os.environ.get("FREE_LIMIT", "5"))
-MAX_UPLOAD_BYTES = 15 * 1024 * 1024
+GEMINI_KEY    = os.environ.get("GEMINI_API_KEY", "")
+FB_PROJECT    = os.environ.get("FIREBASE_PROJECT_ID", "hermez-fdff9")
+FREE_LIMIT    = int(os.environ.get("FREE_LIMIT", "5"))
+MAX_BYTES     = 15 * 1024 * 1024
+GEMINI_URL    = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_KEY}"
 
-app = FastAPI(title="MedBill Bot")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["*"],
-    allow_credentials=False,
-    max_age=3600,
-)
-
+app = FastAPI(title="BillClear")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# ── Firestore client ────────────────────────────────────────
+# ponytail: lazy firestore init — None = disabled gracefully
 db = None
 try:
-    db = firestore.Client(project=FIREBASE_PROJECT_ID)
-    logger.info("Firestore connected")
+    db = firestore.Client(project=FB_PROJECT)
+    log.info("Firestore connected")
 except Exception as e:
-    logger.warning(f"Firestore unavailable: {e}")
+    log.warning(f"Firestore unavailable: {e}")
 
 
-# ── Auth helper ─────────────────────────────────────────────
-def verify_firebase_token(request: Request) -> dict:
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing auth token")
-    token = auth_header.split(" ", 1)[1]
+# ── Auth ─────────────────────────────────────────────────────
+def auth(request: Request) -> str:
+    hdr = request.headers.get("Authorization", "")
+    if not hdr.startswith("Bearer "):
+        raise HTTPException(401, "Missing auth token")
     try:
-        decoded = google.oauth2.id_token.verify_firebase_token(
-            token,
-            google.auth.transport.requests.Request(),
-            audience=FIREBASE_PROJECT_ID,
-        )
-        # normalize: google lib returns 'sub', firebase convention is 'uid'
-        if "uid" not in decoded:
-            decoded["uid"] = decoded.get("sub", "")
-        return decoded
+        d = google.oauth2.id_token.verify_firebase_token(
+            hdr[7:], google.auth.transport.requests.Request(), audience=FB_PROJECT)
+        return d.get("uid") or d.get("sub", "")
     except Exception as e:
-        logger.warning(f"Token verify failed: {e}")
-        raise HTTPException(status_code=401, detail="Invalid token")
+        log.warning(f"Auth failed: {e}")
+        raise HTTPException(401, "Invalid token")
 
 
-# ── Usage helpers ───────────────────────────────────────────
-def get_month_key() -> str:
-    now = datetime.now(timezone.utc)
-    return f"{now.year}-{now.month:02d}"
+# ── Usage ────────────────────────────────────────────────────
+def _usage_ref(uid: str):
+    month = datetime.now(timezone.utc).strftime("%Y-%m")
+    return db.collection("usage").document(uid).collection("months").document(month)
 
+def get_usage(uid: str) -> dict:
+    if db is None: return {"count": 0, "limit": FREE_LIMIT}
+    doc = _usage_ref(uid).get()
+    return {"count": (doc.to_dict() or {}).get("count", 0), "limit": FREE_LIMIT}
 
-def check_and_increment_usage(uid: str) -> dict:
-    """Returns {"count": N, "limit": FREE_LIMIT, "allowed": bool}"""
-    if db is None:
-        return {"count": 0, "limit": FREE_LIMIT, "allowed": True}
-    month = get_month_key()
-    ref = db.collection("usage").document(uid).collection("months").document(month)
+def consume_usage(uid: str) -> dict:
+    if db is None: return {"count": 1, "limit": FREE_LIMIT, "allowed": True}
+    ref = _usage_ref(uid)
     doc = ref.get()
-    count = doc.to_dict().get("count", 0) if doc.exists else 0
+    count = (doc.to_dict() or {}).get("count", 0)
     if count >= FREE_LIMIT:
         return {"count": count, "limit": FREE_LIMIT, "allowed": False}
     ref.set({"count": count + 1, "updated": datetime.now(timezone.utc)})
     return {"count": count + 1, "limit": FREE_LIMIT, "allowed": True}
 
 
-def get_usage(uid: str) -> dict:
-    if db is None:
-        return {"count": 0, "limit": FREE_LIMIT}
-    month = get_month_key()
-    ref = db.collection("usage").document(uid).collection("months").document(month)
-    doc = ref.get()
-    count = doc.to_dict().get("count", 0) if doc.exists else 0
-    return {"count": count, "limit": FREE_LIMIT}
+# ── Gemini ───────────────────────────────────────────────────
+PROMPT = """You are a senior medical billing auditor. Analyze the bill and return ONLY valid JSON — no markdown, no fences.
 
-
-# ── File extraction ───────────────────────────────────────────
-def extract_pdf_text(data: bytes) -> str:
-    try:
-        with fitz.open(stream=data, filetype="pdf") as doc:
-            return "\n".join(page.get_text() for page in doc)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"PDF parse failed: {e}")
-
-def extract_image_text(data: bytes) -> str:
-    try:
-        # Use pymupdf to open image and extract text via OCR
-        with fitz.open(stream=data) as doc:
-            text = "\n".join(page.get_text() for page in doc)
-        if text.strip():
-            return text
-        # Fallback: send raw image bytes as base64 to Gemini vision
-        return ""
-    except Exception:
-        return ""
-
-def extract_text_from_file(data: bytes, filename: str, content_type: str) -> str:
-    fname = filename.lower()
-    if fname.endswith(".pdf") or content_type == "application/pdf":
-        return extract_pdf_text(data)
-    elif any(fname.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tiff", ".tif", ".heic", ".heif"]):
-        # Return base64 for image — Gemini will do vision analysis
-        import base64
-        b64 = base64.b64encode(data).decode()
-        mime = content_type if content_type and "image" in content_type else "image/jpeg"
-        return f"__IMAGE_BASE64__{mime}::{b64}"
-    else:
-        raise HTTPException(status_code=400, detail="Unsupported file type. Upload PDF, JPG, or PNG.")
-
-
-# ── Gemini analysis ──────────────────────────────────────────
-async def run_gemini(bill_text: str) -> dict:
-    if not GEMINI_API_KEY:
-        raise HTTPException(status_code=500, detail="Gemini API key not configured")
-
-    is_image = bill_text.startswith("__IMAGE_BASE64__")
-
-    prompt_text = """You are a senior medical billing auditor with 20 years of experience. Analyze the medical bill and return ONLY a valid JSON object — no markdown, no explanation, no code fences.
-
-JSON shape:
+Shape:
 {
-  "summary": {
-    "total_billed": "$X,XXX",
-    "potential_overcharge": "$X,XXX",
-    "estimated_savings": "$X,XXX",
-    "flags_count": N
-  },
-  "flags": [
-    {
-      "type": "overcharge|duplicate|verify|ok",
-      "title": "Short issue title (max 8 words)",
-      "description": "1-2 sentence plain-English explanation of the problem and why it matters.",
-      "amount": "$XXX or null"
-    }
-  ],
-  "dispute_letter": "Full formal dispute letter text, ready to mail or email. Include [YOUR NAME], [DATE], [PROVIDER NAME] placeholders where needed."
+  "summary": {"total_billed":"$X","potential_overcharge":"$X","estimated_savings":"$X","flags_count":N},
+  "flags": [{"type":"overcharge|duplicate|verify|ok","title":"max 8 words","description":"1-2 sentences","amount":"$X or null"}],
+  "dispute_letter": "Full formal dispute letter. Use [YOUR NAME], [DATE], [PROVIDER NAME] placeholders."
 }
+Types: overcharge=above typical rates, duplicate=billed twice, verify=needs clarification, ok=reasonable (1-2 items)."""
 
-Types:
-- overcharge: charge significantly above typical rates
-- duplicate: same service billed twice
-- verify: suspicious charge that needs clarification
-- ok: charge appears reasonable (include 1-2 ok items for balance)
-"""
+async def gemini(bill_text: str) -> dict:
+    if not GEMINI_KEY:
+        raise HTTPException(500, "Gemini API key not configured")
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
-
-    if is_image:
-        # Vision mode — send image directly to Gemini
-        _, rest = bill_text.split("__IMAGE_BASE64__", 1)
-        mime, b64 = rest.split("::", 1)
-        payload = {
-            "contents": [{
-                "parts": [
-                    {"text": prompt_text + "\n\nAnalyze the medical bill shown in this image:"},
-                    {"inline_data": {"mime_type": mime, "data": b64}}
-                ]
-            }],
-            "generationConfig": {"temperature": 0.2, "maxOutputTokens": 4096}
-        }
+    if bill_text.startswith("__IMG__"):
+        _, mime, b64 = bill_text.split("::", 2)
+        parts = [{"text": PROMPT + "\n\nAnalyze the medical bill in this image:"},
+                 {"inline_data": {"mime_type": mime, "data": b64}}]
     else:
-        payload = {
-            "contents": [{"parts": [{"text": prompt_text + "\n\nMedical bill to analyze:\n" + bill_text}]}],
+        parts = [{"text": PROMPT + "\n\nBill:\n" + bill_text}]
+
+    async with httpx.AsyncClient(timeout=60) as c:
+        r = await c.post(GEMINI_URL, json={
+            "contents": [{"parts": parts}],
             "generationConfig": {"temperature": 0.2, "maxOutputTokens": 4096}
-        }
+        })
+    if r.status_code != 200:
+        log.error(f"Gemini {r.status_code}: {r.text[:200]}")
+        raise HTTPException(502, "Gemini API error")
 
-    async with httpx.AsyncClient(timeout=60) as client:
-        resp = await client.post(url, json=payload)
-        if resp.status_code != 200:
-            logger.error(f"Gemini error {resp.status_code}: {resp.text[:300]}")
-            raise HTTPException(status_code=502, detail="Gemini API error")
-        data = resp.json()
-
-    raw = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-    # strip markdown fences if model adds them
-    if raw.startswith("```"):
-        raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
-        raw = raw.rsplit("```", 1)[0].strip()
-
-    import json
+    raw = r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+    if raw.startswith("```"):  # strip fences if model adds them
+        raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
     try:
         return json.loads(raw)
     except Exception:
-        raise HTTPException(status_code=502, detail="Could not parse Gemini response")
+        raise HTTPException(502, "Could not parse Gemini response")
 
 
 # ── Routes ───────────────────────────────────────────────────
-
 @app.get("/")
-async def root():
-    return FileResponse("static/index.html")
-
+async def root(): return FileResponse("static/index.html")
 
 @app.get("/health")
 async def health():
-    start = time.time()
-    try:
-        result = {
-            "status": "ok",
-            "gemini_key_set": bool(GEMINI_API_KEY),
-            "firebase_project": FIREBASE_PROJECT_ID,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-        logger.info(f"[/health] uid=- status=ok dur={time.time()-start:.2f}s")
-        return result
-    except Exception as e:
-        logger.error(f"[/health] uid=- error={e}")
-        raise
-
-
-@app.post("/extract")
-async def extract(file: UploadFile = File(...)):
-    start = time.time()
-    try:
-        data = await file.read()
-        if len(data) > MAX_UPLOAD_BYTES:
-            raise HTTPException(status_code=413, detail="File too large (max 15MB)")
-        text = extract_text_from_file(data, file.filename or "", file.content_type or "")
-        logger.info(f"[/extract] uid=- status=ok dur={time.time()-start:.2f}s")
-        return {"text": text, "chars": len(text)}
-    except HTTPException as e:
-        logger.error(f"[/extract] uid=- error={e.detail}")
-        raise
-    except Exception as e:
-        logger.error(f"[/extract] uid=- error={e}")
-        raise
-
+    return {"status": "ok", "gemini_key_set": bool(GEMINI_KEY),
+            "firebase_project": FB_PROJECT, "timestamp": datetime.now(timezone.utc).isoformat()}
 
 @app.get("/usage")
 async def usage_endpoint(request: Request):
-    start = time.time()
-    uid = "unknown"
-    try:
-        user = verify_firebase_token(request)
-        uid = user["uid"]
-        u = get_usage(uid)
-        logger.info(f"[/usage] uid={uid} status=ok dur={time.time()-start:.2f}s")
-        return u
-    except HTTPException as e:
-        logger.error(f"[/usage] uid={uid} error={e.detail}")
-        raise
-    except Exception as e:
-        logger.error(f"[/usage] uid={uid} error={e}")
-        raise
+    t = time.time()
+    uid = auth(request)
+    u = get_usage(uid)
+    log.info(f"[/usage] uid={uid} dur={time.time()-t:.2f}s")
+    return u
 
+@app.post("/extract")
+async def extract(file: UploadFile = File(...)):
+    data = await file.read()
+    if len(data) > MAX_BYTES:
+        raise HTTPException(413, "File too large (max 15MB)")
+    fname = (file.filename or "").lower()
+    if fname.endswith(".pdf") or file.content_type == "application/pdf":
+        with fitz.open(stream=data, filetype="pdf") as doc:
+            return {"text": "\n".join(p.get_text() for p in doc)}
+    mime = file.content_type or "image/jpeg"
+    return {"text": f"__IMG__::{mime}::{base64.b64encode(data).decode()}"}
 
-class AnalyzeRequest(BaseModel):
+class AnalyzeReq(BaseModel):
     bill_text: str
 
-
+# ponytail: one analyze endpoint handles both text+image via bill_text sentinel
 @app.post("/analyze")
-async def analyze(body: AnalyzeRequest, request: Request):
-    start = time.time()
-    uid = "unknown"
-    try:
-        user = verify_firebase_token(request)
-        uid = user["uid"]
-
-        if not body.bill_text or len(body.bill_text.strip()) < 20:
-            raise HTTPException(status_code=400, detail="Bill text too short")
-
-        usage = check_and_increment_usage(uid)
-        if not usage["allowed"]:
-            raise HTTPException(
-                status_code=429,
-                detail=f"Free limit reached ({usage['limit']} analyses/month). Upgrade for unlimited access."
-            )
-
-        result = await run_gemini(body.bill_text)
-        result["usage"] = usage
-        logger.info(f"[/analyze] uid={uid} status=ok dur={time.time()-start:.2f}s")
-        return result
-    except HTTPException as e:
-        logger.error(f"[/analyze] uid={uid} error={e.detail}")
-        raise
-    except Exception as e:
-        logger.error(f"[/analyze] uid={uid} error={e}")
-        raise
-
+async def analyze(body: AnalyzeReq, request: Request):
+    t = time.time()
+    uid = auth(request)
+    if not body.bill_text or len(body.bill_text.strip()) < 20:
+        raise HTTPException(400, "Bill text too short")
+    usage = consume_usage(uid)
+    if not usage["allowed"]:
+        raise HTTPException(429, f"Free limit reached ({FREE_LIMIT}/month). Upgrade for unlimited.")
+    result = await gemini(body.bill_text)
+    result["usage"] = usage
+    log.info(f"[/analyze] uid={uid} dur={time.time()-t:.2f}s")
+    return result
 
 @app.post("/analyze-file")
 async def analyze_file(request: Request, file: UploadFile = File(...)):
-    start = time.time()
-    uid = "unknown"
-    try:
-        user = verify_firebase_token(request)
-        uid = user["uid"]
-
-        data = await file.read()
-        if len(data) > MAX_UPLOAD_BYTES:
-            raise HTTPException(status_code=413, detail="File too large (max 15MB)")
-
-        import base64
-        b64 = base64.b64encode(data).decode()
-        mime = file.content_type if file.content_type and "image" in file.content_type else "image/jpeg"
-        bill_text = f"__IMAGE_BASE64__{mime}::{b64}"
-
-        usage = check_and_increment_usage(uid)
-        if not usage["allowed"]:
-            raise HTTPException(
-                status_code=429,
-                detail=f"Free limit reached ({usage['limit']} analyses/month). Upgrade for unlimited access."
-            )
-
-        result = await run_gemini(bill_text)
-        result["usage"] = usage
-        logger.info(f"[/analyze-file] uid={uid} status=ok dur={time.time()-start:.2f}s")
-        return result
-    except HTTPException as e:
-        logger.error(f"[/analyze-file] uid={uid} error={e.detail}")
-        raise
-    except Exception as e:
-        logger.error(f"[/analyze-file] uid={uid} error={e}")
-        raise
+    t = time.time()
+    uid = auth(request)
+    data = await file.read()
+    if len(data) > MAX_BYTES:
+        raise HTTPException(413, "File too large (max 15MB)")
+    mime = file.content_type or "image/jpeg"
+    bill_text = f"__IMG__::{mime}::{base64.b64encode(data).decode()}"
+    usage = consume_usage(uid)
+    if not usage["allowed"]:
+        raise HTTPException(429, f"Free limit reached ({FREE_LIMIT}/month). Upgrade for unlimited.")
+    result = await gemini(bill_text)
+    result["usage"] = usage
+    log.info(f"[/analyze-file] uid={uid} dur={time.time()-t:.2f}s")
+    return result

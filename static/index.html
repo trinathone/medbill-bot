@@ -470,7 +470,7 @@
 
 <script>
 /* ── Auth UI ─────────────────────────────────── */
-function signInWithGoogle() {
+const API = 'https://medbill-bot-production.up.railway.app';
   // Firebase module may still be initializing — wait up to 5s
   if (!window._fbAuth) {
     let waited = 0;
@@ -540,7 +540,7 @@ async function loadUsage() {
   try {
     const token = await window._fbUser.getIdToken(true);
     window._fbToken = token;
-    const res = await fetch('/usage', { headers: { 'Authorization': 'Bearer ' + token } });
+    const res = await fetch(API + '/usage', { headers: { 'Authorization': 'Bearer ' + token } });
     if (!res.ok) return;
     const u = await res.json();
     updateUsageUI(u.count, u.limit);
@@ -594,7 +594,7 @@ async function handleFile(file) {
   window._uploadedFile = null;
   const fd = new FormData(); fd.append('file', file);
   try {
-    const res = await fetch('https://medbill-bot-production.up.railway.app/extract', { method: 'POST', body: fd });
+    const res = await fetch(API + '/extract', { method: 'POST', body: fd });
     if (!res.ok) throw new Error();
     const d = await res.json();
     const text = d.text || '';
@@ -627,14 +627,14 @@ async function analyze() {
         // Image file — send as multipart directly to /analyze-file
         const fd = new FormData();
         fd.append('file', window._uploadedFile);
-        res = await fetch('https://medbill-bot-production.up.railway.app/analyze-file', {
+        res = await fetch(API + '/analyze-file', {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token },
           body: fd
         });
       } else {
         // Text/PDF extracted text — send as JSON
-        res = await fetch('https://medbill-bot-production.up.railway.app/analyze', {
+        res = await fetch(API + '/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
           body: JSON.stringify({ bill_text: billText })

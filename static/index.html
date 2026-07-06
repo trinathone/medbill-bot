@@ -471,6 +471,8 @@
 <script>
 /* ── Auth UI ─────────────────────────────────── */
 const API = 'https://medbill-bot-production.up.railway.app';
+
+function signInWithGoogle() {
   // Firebase module may still be initializing — wait up to 5s
   if (!window._fbAuth) {
     let waited = 0;

@@ -1,0 +1,8 @@
+{
+  "hosting": {
+    "site": "billclear",
+    "public": "static",
+    "ignore": ["firebase.json", "**/.*"],
+    "rewrites": []
+  }
+}

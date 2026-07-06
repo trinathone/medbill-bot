@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MedBill — AI Medical Bill Analyzer</title>
+  <title>BillClear — AI Medical Bill Analyzer</title>
   <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600&family=Source+Code+Pro:wght@400;500;700&display=swap" rel="stylesheet"/>
   <style>
     :root {
@@ -249,7 +249,7 @@
           <path d="M1.5 8.5h3l2-5.5 3 10 2-4.5H15.5"/>
         </svg>
       </div>
-      <span class="logo-name">MedBill</span>
+      <span class="logo-name">BillClear</span>
     </a>
     <span class="nav-pill">FREE</span>
     <div class="nav-space"></div>
@@ -348,10 +348,10 @@
                   <path d="M10 13V4m-4 5 4-4 4 4"/><path d="M3 15.5h14"/>
                 </svg>
               </div>
-              <p class="dz-label">Drop PDF here or <strong>browse</strong></p>
-              <p class="dz-sub">PDF, up to 15MB</p>
+              <p class="dz-label">Drop file here or <strong>browse</strong></p>
+              <p class="dz-sub">PDF, JPG, PNG, HEIC — up to 15MB</p>
             </div>
-            <input type="file" id="file-input" accept=".pdf"/>
+            <input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.bmp,.tiff,.gif"/>
             <div class="or-divider">or paste text</div>
             <textarea id="bill-text" placeholder="Paste your EOB, itemized bill, or any charge description...&#10;&#10;Example:&#10;  Room &amp; Board (3 days)  — $7,200&#10;  CBC Lab Panel           — $840&#10;  Physician Visit         — $1,200"></textarea>
             <div class="action-row">
@@ -432,12 +432,12 @@
 <!-- Firebase SDKs -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, onAuthStateChanged }
-    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged }
+    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
   const firebaseConfig = {
     apiKey:            "AIzaSyA65t2AjwcaiiSpu-IIyBaB0z8wcJOQgvc",
-    authDomain:        "hermez-fdff9.firebaseapp.com",
+    authDomain: "hermez-fdff9.firebaseapp.com",
     projectId:         "hermez-fdff9",
     storageBucket:     "hermez-fdff9.firebasestorage.app",
     messagingSenderId: "362560270479",
@@ -451,15 +451,8 @@
   // expose to window for button handlers
   window._fbAuth     = auth;
   window._fbProvider = provider;
-  window._fbSignIn   = () => signInWithRedirect(auth, provider);
+  window._fbSignIn   = () => signInWithPopup(auth, provider);
   window._fbSignOut  = () => signOut(auth);
-
-  // handle redirect result on page load
-  getRedirectResult(auth).then(result => {
-    if (result && result.user) {
-      window._fbUser = result.user;
-    }
-  }).catch(e => console.warn('redirect result:', e));
 
   onAuthStateChanged(auth, async (user) => {
     if (user) {
@@ -580,20 +573,28 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function handleFile(file) {
-  if (!file || !file.name.toLowerCase().endsWith('.pdf')) { showErr('Please upload a PDF file.'); return; }
+  const allowed = /\.(pdf|jpg|jpeg|png|webp|heic|heif|bmp|tiff|tif|gif)$/i;
+  if (!file || !allowed.test(file.name)) { showErr('Upload a PDF or image file (JPG, PNG, HEIC, etc.)'); return; }
   hideErr();
   document.getElementById('file-name').textContent = file.name;
   const fd = new FormData(); fd.append('file', file);
   try {
-    const res = await fetch('/extract', { method: 'POST', body: fd });
+    const res = await fetch('https://medbill-bot-production.up.railway.app/extract', { method: 'POST', body: fd });
     if (!res.ok) throw new Error();
     const d = await res.json();
     const text = d.text || '';
-    document.getElementById('bill-text').value = text;
-    billText = text.trim();
-    document.getElementById('char-count').textContent = text.length.toLocaleString() + ' chars';
-    document.getElementById('analyze-btn').disabled = billText.length < 20;
-  } catch { showErr('Could not parse the PDF. Try pasting the text directly.'); }
+    // Don't show raw base64 in textarea for images
+    if (text.startsWith('__IMAGE_BASE64__')) {
+      document.getElementById('bill-text').value = '[Image uploaded — ready to analyze]';
+      billText = text; // keep real data for analysis
+      document.getElementById('char-count').textContent = 'Image ready';
+    } else {
+      document.getElementById('bill-text').value = text;
+      billText = text.trim();
+      document.getElementById('char-count').textContent = text.length.toLocaleString() + ' chars';
+    }
+    document.getElementById('analyze-btn').disabled = false;
+  } catch { showErr('Could not process the file. Try pasting the text directly.'); }
 }
 
 /* ── Analyze ─────────────────────────────────── */

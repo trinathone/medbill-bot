@@ -88,7 +88,7 @@ def get_usage(uid: str) -> dict:
     return {"count": count, "limit": FREE_LIMIT}
 
 
-# ── PDF extraction ───────────────────────────────────────────
+# ── File extraction ───────────────────────────────────────────
 def extract_pdf_text(data: bytes) -> str:
     try:
         with fitz.open(stream=data, filetype="pdf") as doc:
@@ -96,13 +96,40 @@ def extract_pdf_text(data: bytes) -> str:
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"PDF parse failed: {e}")
 
+def extract_image_text(data: bytes) -> str:
+    try:
+        # Use pymupdf to open image and extract text via OCR
+        with fitz.open(stream=data) as doc:
+            text = "\n".join(page.get_text() for page in doc)
+        if text.strip():
+            return text
+        # Fallback: send raw image bytes as base64 to Gemini vision
+        return ""
+    except Exception:
+        return ""
+
+def extract_text_from_file(data: bytes, filename: str, content_type: str) -> str:
+    fname = filename.lower()
+    if fname.endswith(".pdf") or content_type == "application/pdf":
+        return extract_pdf_text(data)
+    elif any(fname.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tiff", ".tif", ".heic", ".heif"]):
+        # Return base64 for image — Gemini will do vision analysis
+        import base64
+        b64 = base64.b64encode(data).decode()
+        mime = content_type if content_type and "image" in content_type else "image/jpeg"
+        return f"__IMAGE_BASE64__{mime}::{b64}"
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported file type. Upload PDF, JPG, or PNG.")
+
 
 # ── Gemini analysis ──────────────────────────────────────────
 async def run_gemini(bill_text: str) -> dict:
     if not GEMINI_API_KEY:
         raise HTTPException(status_code=500, detail="Gemini API key not configured")
 
-    prompt = """You are a senior medical billing auditor with 20 years of experience. Analyze the medical bill below and return ONLY a valid JSON object — no markdown, no explanation, no code fences.
+    is_image = bill_text.startswith("__IMAGE_BASE64__")
+
+    prompt_text = """You are a senior medical billing auditor with 20 years of experience. Analyze the medical bill and return ONLY a valid JSON object — no markdown, no explanation, no code fences.
 
 JSON shape:
 {
@@ -128,18 +155,28 @@ Types:
 - duplicate: same service billed twice
 - verify: suspicious charge that needs clarification
 - ok: charge appears reasonable (include 1-2 ok items for balance)
-
-Medical bill to analyze:
-""" + bill_text
+"""
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "temperature": 0.2,
-            "maxOutputTokens": 4096,
+
+    if is_image:
+        # Vision mode — send image directly to Gemini
+        _, rest = bill_text.split("__IMAGE_BASE64__", 1)
+        mime, b64 = rest.split("::", 1)
+        payload = {
+            "contents": [{
+                "parts": [
+                    {"text": prompt_text + "\n\nAnalyze the medical bill shown in this image:"},
+                    {"inline_data": {"mime_type": mime, "data": b64}}
+                ]
+            }],
+            "generationConfig": {"temperature": 0.2, "maxOutputTokens": 4096}
         }
-    }
+    else:
+        payload = {
+            "contents": [{"parts": [{"text": prompt_text + "\n\nMedical bill to analyze:\n" + bill_text}]}],
+            "generationConfig": {"temperature": 0.2, "maxOutputTokens": 4096}
+        }
 
     async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.post(url, json=payload)
@@ -173,7 +210,7 @@ async def extract(file: UploadFile = File(...)):
     data = await file.read()
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="File too large (max 15MB)")
-    text = extract_pdf_text(data)
+    text = extract_text_from_file(data, file.filename or "", file.content_type or "")
     return {"text": text, "chars": len(text)}
 
 

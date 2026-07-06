@@ -54,6 +54,9 @@ def verify_firebase_token(request: Request) -> dict:
             google.auth.transport.requests.Request(),
             audience=FIREBASE_PROJECT_ID,
         )
+        # normalize: google lib returns 'sub', firebase convention is 'uid'
+        if "uid" not in decoded:
+            decoded["uid"] = decoded.get("sub", "")
         return decoded
     except Exception as e:
         logger.warning(f"Token verify failed: {e}")

@@ -477,6 +477,24 @@
 <script>
 /* ── Auth UI ─────────────────────────────────── */
 function signInWithGoogle() {
+  // Firebase module may still be initializing — wait up to 5s
+  if (!window._fbAuth) {
+    let waited = 0;
+    const interval = setInterval(() => {
+      waited += 100;
+      if (window._fbAuth) {
+        clearInterval(interval);
+        _doSignIn();
+      } else if (waited >= 5000) {
+        clearInterval(interval);
+        showErr("Firebase failed to load. Please refresh and try again.");
+      }
+    }, 100);
+    return;
+  }
+  _doSignIn();
+}
+function _doSignIn() {
   window._fbAuth.signInWithRedirect(window._fbProvider).catch(e => {
     console.error(e);
     showErr("Sign-in failed: " + e.message);

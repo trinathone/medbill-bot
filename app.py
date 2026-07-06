@@ -1,7 +1,7 @@
 import os, time, base64, json, logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from fastapi import FastAPI, File, UploadFile, HTTPException, Request
+from fastapi import FastAPI, File, UploadFile, HTTPException, Request, Form
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -68,7 +68,8 @@ def consume_usage(uid: str) -> dict:
 
 
 # ── Gemini ───────────────────────────────────────────────────
-PROMPT = """You are a senior medical billing auditor. Analyze the bill and return ONLY valid JSON — no markdown, no fences, no extra text.
+# ponytail: one JSON shape for every bill type; only persona + flag rules change.
+_SHAPE = """ and return ONLY valid JSON — no markdown, no fences, no extra text.
 
 Shape:
 {
@@ -76,18 +77,32 @@ Shape:
   "flags": [{"type":"overcharge|duplicate|verify|ok","title":"short title max 6 words","description":"1 sentence only","amount":"$X or null"}],
   "dispute_letter": "Formal dispute letter under 400 words. Use [YOUR NAME], [DATE], [PROVIDER NAME] placeholders."
 }
-Types: overcharge=above typical rates, duplicate=billed twice, verify=needs clarification, ok=reasonable (1-2 items)."""
+Types: overcharge=above typical rates, duplicate=billed twice, verify=needs clarification, ok=reasonable (1-2 items).
+Flag priorities for this bill: """
 
-async def gemini(bill_text: str) -> dict:
+PROMPTS = {
+    "medical":      "You are a senior medical billing auditor. Analyze the bill" + _SHAPE + "phantom charges for services not rendered, upcoded procedures, duplicate billing, unbundled charges that should be one code, and line items above typical CPT rates.",
+    "legal":        "You are a senior legal-fee auditor. Analyze the invoice" + _SHAPE + "hour padding and block billing, duplicate time entries, rates above the agreed retainer, vague or 'no-charge-worthy' task descriptions, and clerical work billed at attorney rates.",
+    "utility":      "You are a senior utility-billing auditor. Analyze the bill" + _SHAPE + "wrong rate class or tariff, meter reading errors, estimated vs actual read discrepancies, duplicate charges, and fees not authorized by the tariff schedule.",
+    "contractor":   "You are a senior construction-cost auditor. Analyze the invoice" + _SHAPE + "duplicate labor charges, inflated material markups, unauthorized change orders, work billed but not completed, and hours exceeding the agreed scope.",
+    "insurance":    "You are a senior insurance-billing auditor. Analyze the statement" + _SHAPE + "wrong premium or risk class, incorrectly denied valid claims, coverage/deductible errors, duplicate premium charges, and fees not in the policy.",
+    "telecom":      "You are a senior telecom-billing auditor. Analyze the bill" + _SHAPE + "hidden or junk fees, wrong plan or tier, unauthorized add-on charges, expired promo pricing not applied, and duplicate line/device fees.",
+    "property_tax": "You are a senior property-tax assessment auditor. Analyze the assessment" + _SHAPE + "over-assessment vs comparable properties, wrong property classification, incorrect square footage or lot size, missing exemptions, and math errors in the levy.",
+}
+
+async def gemini(bill_text: str, bill_type: str = "medical") -> dict:
     if not GEMINI_KEY:
         raise HTTPException(500, "Gemini API key not configured")
 
+    prompt = PROMPTS.get(bill_type, PROMPTS["medical"])
+    label  = bill_type.replace("_", " ")
+
     if bill_text.startswith("__IMG__"):
         _, mime, b64 = bill_text.split("::", 2)
-        parts = [{"text": PROMPT + "\n\nAnalyze the medical bill in this image:"},
+        parts = [{"text": prompt + f"\n\nAnalyze the {label} bill in this image:"},
                  {"inline_data": {"mime_type": mime, "data": b64}}]
     else:
-        parts = [{"text": PROMPT + "\n\nBill:\n" + bill_text}]
+        parts = [{"text": prompt + "\n\nBill:\n" + bill_text}]
 
     async with httpx.AsyncClient(timeout=60) as c:
         r = await c.post(GEMINI_URL, json={
@@ -138,6 +153,7 @@ async def extract(file: UploadFile = File(...)):
 
 class AnalyzeReq(BaseModel):
     bill_text: str
+    bill_type: str = "medical"
 
 # ponytail: one analyze endpoint handles both text+image via bill_text sentinel
 @app.post("/analyze")
@@ -149,13 +165,13 @@ async def analyze(body: AnalyzeReq, request: Request):
     usage = consume_usage(uid)
     if not usage["allowed"]:
         raise HTTPException(429, f"Free limit reached ({FREE_LIMIT}/month). Upgrade for unlimited.")
-    result = await gemini(body.bill_text)
+    result = await gemini(body.bill_text, body.bill_type)
     result["usage"] = usage
-    log.info(f"[/analyze] uid={uid} dur={time.time()-t:.2f}s")
+    log.info(f"[/analyze] uid={uid} type={body.bill_type} dur={time.time()-t:.2f}s")
     return result
 
 @app.post("/analyze-file")
-async def analyze_file(request: Request, file: UploadFile = File(...)):
+async def analyze_file(request: Request, file: UploadFile = File(...), bill_type: str = Form("medical")):
     t = time.time()
     uid = auth(request)
     data = await file.read()
@@ -166,7 +182,7 @@ async def analyze_file(request: Request, file: UploadFile = File(...)):
     usage = consume_usage(uid)
     if not usage["allowed"]:
         raise HTTPException(429, f"Free limit reached ({FREE_LIMIT}/month). Upgrade for unlimited.")
-    result = await gemini(bill_text)
+    result = await gemini(bill_text, bill_type)
     result["usage"] = usage
-    log.info(f"[/analyze-file] uid={uid} dur={time.time()-t:.2f}s")
+    log.info(f"[/analyze-file] uid={uid} type={bill_type} dur={time.time()-t:.2f}s")
     return result

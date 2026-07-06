@@ -57,6 +57,9 @@
       padding: 0 32px;
     }
     .nav-inner { width: 100%; max-width: 1080px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+    .nav-back { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--body); padding: 5px 10px 5px 8px; border: 1px solid var(--border); border-radius: 6px; text-decoration: none; transition: border-color 0.15s, color 0.15s; margin-right: 4px; }
+    .nav-back:hover { border-color: var(--purple-lt); color: var(--purple); }
+    .nav-back svg { width: 13px; height: 13px; }
     .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
     .logo-icon { width: 32px; height: 32px; background: var(--purple); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
     .logo-icon svg { width: 17px; height: 17px; color: #fff; }
@@ -138,6 +141,14 @@
     .card-title { font-size: 14px; font-weight: 500; color: var(--heading); letter-spacing: -0.15px; }
     .card-meta { font-size: 12px; font-family: var(--mono); color: var(--body); }
     .card-body { padding: 20px; }
+
+    /* Bill type selector */
+    .type-select-row { margin-bottom: 16px; }
+    .type-select-label { display: block; font-size: 11px; font-weight: 500; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--body); margin-bottom: 8px; }
+    .type-select { position: relative; }
+    .type-select select { width: 100%; appearance: none; -webkit-appearance: none; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 11px 38px 11px 14px; font-family: 'Source Sans 3', system-ui, sans-serif; font-size: 14px; color: var(--heading); cursor: pointer; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+    .type-select select:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(83,58,253,0.1); background: var(--white); }
+    .type-select::after { content: ''; position: absolute; right: 14px; top: 50%; width: 8px; height: 8px; border-right: 1.5px solid var(--body); border-bottom: 1.5px solid var(--body); transform: translateY(-70%) rotate(45deg); pointer-events: none; }
 
     /* Drop zone */
     .drop-zone { border: 1.5px dashed #c8d6e5; border-radius: 6px; padding: 24px 20px; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; margin-bottom: 16px; }
@@ -243,7 +254,11 @@
 <!-- Nav -->
 <nav>
   <div class="nav-inner">
-    <a class="logo" href="#">
+    <a class="nav-back" href="/" title="Back to BillClear home">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 5 8l5 5"/></svg>
+      <span>Back</span>
+    </a>
+    <a class="logo" href="/">
       <div class="logo-icon">
         <svg viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
           <path d="M1.5 8.5h3l2-5.5 3 10 2-4.5H15.5"/>
@@ -342,6 +357,20 @@
             <span class="card-meta" id="file-name"></span>
           </div>
           <div class="card-body">
+            <div class="type-select-row">
+              <label class="type-select-label" for="bill-type">Bill type</label>
+              <div class="type-select">
+                <select id="bill-type">
+                  <option value="medical">Medical</option>
+                  <option value="legal">Legal</option>
+                  <option value="utility">Utility</option>
+                  <option value="contractor">Contractor</option>
+                  <option value="insurance">Insurance</option>
+                  <option value="telecom">Telecom</option>
+                  <option value="property_tax">Property Tax</option>
+                </select>
+              </div>
+            </div>
             <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
               <div class="dz-icon">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -622,6 +651,7 @@ async function analyze() {
   try {
     const token = await window._fbUser.getIdToken(true);
     window._fbToken = token;
+    const billType = document.getElementById('bill-type').value;
 
     let res;
     try {
@@ -629,6 +659,7 @@ async function analyze() {
         // Image file — send as multipart directly to /analyze-file
         const fd = new FormData();
         fd.append('file', window._uploadedFile);
+        fd.append('bill_type', billType);
         res = await fetch(API + '/analyze-file', {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token },
@@ -639,7 +670,7 @@ async function analyze() {
         res = await fetch(API + '/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-          body: JSON.stringify({ bill_text: billText })
+          body: JSON.stringify({ bill_text: billText, bill_type: billType })
         });
       }
     } catch {

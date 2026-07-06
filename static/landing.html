@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BillClear — Every overcharge. Caught.</title>
+<meta name="description" content="AI that fights back on medical, legal, utility and contractor bills. Free bill audits and dispute letters in seconds."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --navy:      #060a1c;
+    --navy-2:    #0a1030;
+    --surface:   rgba(255,255,255,0.04);
+    --surface-2: rgba(255,255,255,0.06);
+    --border:    rgba(255,255,255,0.09);
+    --border-hi: rgba(0,102,255,0.45);
+    --white:     #ffffff;
+    --text:      #c3cbe4;
+    --muted:     #8892b5;
+    --blue:      #0066FF;
+    --blue-lt:   #4d94ff;
+    --blue-glow: rgba(0,102,255,0.35);
+    --green:     #23d18b;
+    --red:       #ff5c78;
+    --amber:     #ffb84d;
+    --radius:    16px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background: var(--navy);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  ::selection { background: var(--blue); color: #fff; }
+  a { color: inherit; text-decoration: none; }
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: var(--navy); }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
+  .wrap { max-width: 1140px; margin: 0 auto; padding: 0 28px; }
+  h1, h2, h3 { color: var(--white); letter-spacing: -0.02em; line-height: 1.1; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-family: inherit; font-size: 15px; font-weight: 600;
+    padding: 13px 24px; border-radius: 10px; border: 1px solid transparent;
+    cursor: pointer; transition: transform .18s, box-shadow .18s, background .18s, border-color .18s;
+    white-space: nowrap;
+  }
+  .btn svg { width: 17px; height: 17px; }
+  .btn-primary {
+    color: #fff; background: var(--blue);
+    box-shadow: 0 8px 26px -8px var(--blue-glow), inset 0 1px 0 rgba(255,255,255,.25);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 36px -8px var(--blue-glow), inset 0 1px 0 rgba(255,255,255,.25); }
+  .btn-ghost { color: var(--white); background: var(--surface-2); border-color: var(--border); }
+  .btn-ghost:hover { border-color: var(--border-hi); background: var(--surface); }
+  .btn-sm { font-size: 14px; padding: 9px 18px; }
+
+  /* ── Nav ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(6,10,28,0.72);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-inner { display: flex; align-items: center; height: 66px; }
+  .brand { display: flex; align-items: center; gap: 11px; font-weight: 700; font-size: 18px; color: var(--white); letter-spacing: -0.03em; }
+  .brand-mark { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, var(--blue), #4d94ff); display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 18px -6px var(--blue-glow); }
+  .brand-mark svg { width: 19px; height: 19px; color: #fff; }
+  .nav-links { display: flex; align-items: center; gap: 30px; margin-left: 44px; }
+  .nav-links a { font-size: 14.5px; font-weight: 500; color: var(--muted); transition: color .15s; }
+  .nav-links a:hover { color: var(--white); }
+  .nav-cta { margin-left: auto; }
+
+  /* ── Hero ── */
+  .hero { position: relative; padding: 120px 0 110px; text-align: center; overflow: hidden; }
+  .hero::before {
+    content: ''; position: absolute; inset: 0; z-index: 0;
+    background:
+      radial-gradient(680px 400px at 50% -8%, rgba(0,102,255,0.28), transparent 70%),
+      radial-gradient(600px 500px at 85% 20%, rgba(77,148,255,0.10), transparent 70%);
+    pointer-events: none;
+  }
+  .hero .wrap { position: relative; z-index: 1; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-size: 13px; font-weight: 500; color: var(--text);
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 100px; padding: 7px 16px; margin-bottom: 30px;
+  }
+  .pill-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px rgba(35,209,139,0.18); }
+  .hero h1 { font-size: clamp(44px, 7vw, 84px); font-weight: 800; letter-spacing: -0.04em; margin-bottom: 26px; }
+  .hero h1 .accent { background: linear-gradient(120deg, var(--blue-lt), var(--blue)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero p { font-size: clamp(17px, 2.4vw, 21px); color: var(--muted); max-width: 620px; margin: 0 auto 40px; font-weight: 400; }
+  .hero p strong { color: var(--white); font-weight: 600; }
+  .hero-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .hero-actions .btn { font-size: 16px; padding: 15px 30px; }
+  .hero-note { margin-top: 22px; font-size: 13px; color: var(--muted); }
+
+  /* ── Stats bar ── */
+  .statsbar { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: linear-gradient(180deg, rgba(10,16,48,0.6), rgba(6,10,28,0)); }
+  .statsbar-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .statcell { padding: 48px 28px; text-align: center; border-left: 1px solid var(--border); }
+  .statcell:first-child { border-left: none; }
+  .statcell .num { font-size: clamp(34px, 5vw, 52px); font-weight: 800; color: var(--white); letter-spacing: -0.03em; line-height: 1; margin-bottom: 10px; }
+  .statcell .num .cur { color: var(--blue-lt); }
+  .statcell .lbl { font-size: 14px; color: var(--muted); font-weight: 500; }
+
+  /* ── Section shell ── */
+  section.block { padding: 100px 0; }
+  .eyebrow { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--blue-lt); margin-bottom: 16px; text-align: center; }
+  .sec-title { font-size: clamp(30px, 4vw, 44px); font-weight: 800; text-align: center; margin-bottom: 16px; }
+  .sec-sub { font-size: 17px; color: var(--muted); text-align: center; max-width: 560px; margin: 0 auto 56px; }
+
+  /* ── How it works ── */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .step { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 34px 28px; }
+  .step-num { position: absolute; top: 22px; right: 26px; font-size: 46px; font-weight: 800; color: rgba(255,255,255,0.05); letter-spacing: -0.04em; }
+  .step-ico { width: 52px; height: 52px; border-radius: 13px; background: linear-gradient(135deg, rgba(0,102,255,0.22), rgba(0,102,255,0.06)); border: 1px solid var(--border-hi); display: flex; align-items: center; justify-content: center; margin-bottom: 22px; }
+  .step-ico svg { width: 24px; height: 24px; color: var(--blue-lt); }
+  .step h3 { font-size: 20px; font-weight: 700; margin-bottom: 9px; }
+  .step p { font-size: 15px; color: var(--muted); }
+
+  /* ── Bill types ── */
+  .types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .type-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 26px; transition: transform .2s, border-color .2s, background .2s; }
+  .type-card:hover { transform: translateY(-4px); border-color: var(--border-hi); background: var(--surface-2); }
+  .type-ico { width: 46px; height: 46px; border-radius: 11px; background: var(--surface-2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+  .type-ico svg { width: 23px; height: 23px; color: var(--blue-lt); }
+  .type-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+  .type-card p { font-size: 14px; color: var(--muted); line-height: 1.5; }
+
+  /* ── Trust ── */
+  .trust { background: var(--navy-2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .trust-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  .trust-item { text-align: center; padding: 12px; }
+  .trust-ico { width: 48px; height: 48px; margin: 0 auto 16px; border-radius: 50%; background: rgba(35,209,139,0.12); border: 1px solid rgba(35,209,139,0.3); display: flex; align-items: center; justify-content: center; }
+  .trust-ico svg { width: 22px; height: 22px; color: var(--green); }
+  .trust-item h4 { font-size: 15px; font-weight: 600; color: var(--white); margin-bottom: 5px; }
+  .trust-item p { font-size: 13px; color: var(--muted); }
+
+  /* ── Testimonials ── */
+  .quotes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 40px; }
+  .quote { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 30px; display: flex; flex-direction: column; }
+  .stars { display: flex; gap: 3px; margin-bottom: 16px; }
+  .stars svg { width: 16px; height: 16px; color: var(--amber); }
+  .quote blockquote { font-size: 16px; color: var(--text); line-height: 1.6; margin-bottom: 22px; flex: 1; }
+  .quote .who { display: flex; align-items: center; gap: 12px; }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; color: #fff; }
+  .who .name { font-size: 14px; font-weight: 600; color: var(--white); }
+  .who .role { font-size: 12.5px; color: var(--muted); }
+  .synthetic-note { text-align: center; font-size: 12px; color: var(--muted); opacity: .8; }
+
+  /* ── Comparison ── */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  table.cmp { width: 100%; border-collapse: collapse; min-width: 620px; }
+  table.cmp th, table.cmp td { padding: 18px 22px; text-align: left; border-bottom: 1px solid var(--border); font-size: 15px; }
+  table.cmp thead th { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; }
+  table.cmp thead th.hl { color: var(--blue-lt); }
+  table.cmp tbody tr:last-child td { border-bottom: none; }
+  table.cmp td:first-child { color: var(--white); font-weight: 600; }
+  table.cmp .col-hl { background: rgba(0,102,255,0.07); border-left: 1px solid var(--border-hi); border-right: 1px solid var(--border-hi); }
+  .yes { color: var(--green); font-weight: 600; }
+  .no  { color: var(--muted); }
+  .cell-ico { display: inline-flex; align-items: center; gap: 7px; }
+  .cell-ico svg { width: 16px; height: 16px; }
+
+  /* ── FAQ ── */
+  .faq { max-width: 760px; margin: 0 auto; }
+  .faq-item { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); margin-bottom: 12px; overflow: hidden; }
+  .faq-item summary { list-style: none; cursor: pointer; padding: 22px 24px; font-size: 16.5px; font-weight: 600; color: var(--white); display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary .chev { width: 20px; height: 20px; color: var(--blue-lt); flex-shrink: 0; transition: transform .2s; }
+  .faq-item[open] summary .chev { transform: rotate(45deg); }
+  .faq-item .ans { padding: 0 24px 22px; font-size: 15px; color: var(--muted); line-height: 1.65; }
+
+  /* ── Final CTA ── */
+  .finalcta { position: relative; padding: 110px 0; text-align: center; overflow: hidden; background: linear-gradient(160deg, #04122e, #06122f 40%, #0a1c4d); border-top: 1px solid var(--border); }
+  .finalcta::before { content: ''; position: absolute; inset: 0; background: radial-gradient(600px 340px at 50% 120%, rgba(0,102,255,0.4), transparent 70%); }
+  .finalcta .wrap { position: relative; z-index: 1; }
+  .finalcta h2 { font-size: clamp(32px, 5vw, 54px); font-weight: 800; margin-bottom: 20px; }
+  .finalcta p { font-size: 18px; color: var(--text); margin-bottom: 38px; }
+  .finalcta .btn { font-size: 17px; padding: 16px 34px; }
+
+  /* ── Footer ── */
+  footer { padding: 60px 0 40px; border-top: 1px solid var(--border); }
+  .foot-top { display: flex; justify-content: space-between; gap: 40px; flex-wrap: wrap; margin-bottom: 44px; }
+  .foot-brand { max-width: 300px; }
+  .foot-brand p { font-size: 14px; color: var(--muted); margin-top: 16px; line-height: 1.6; }
+  .foot-cols { display: flex; gap: 64px; flex-wrap: wrap; }
+  .foot-col h5 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 16px; font-weight: 600; }
+  .foot-col a { display: block; font-size: 14.5px; color: var(--text); margin-bottom: 11px; transition: color .15s; }
+  .foot-col a:hover { color: var(--blue-lt); }
+  .foot-bottom { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding-top: 28px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+
+  /* ── Reveal animation ── */
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .steps, .types, .trust-grid, .quotes { grid-template-columns: repeat(2, 1fr); }
+    .nav-links { display: none; }
+  }
+  @media (max-width: 620px) {
+    .statsbar-grid { grid-template-columns: 1fr; }
+    .statcell { border-left: none; border-top: 1px solid var(--border); padding: 34px; }
+    .statcell:first-child { border-top: none; }
+    .steps, .types, .trust-grid, .quotes { grid-template-columns: 1fr; }
+    section.block { padding: 72px 0; }
+    .hero { padding: 84px 0 76px; }
+    .foot-top { flex-direction: column; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+    html { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav>
+  <div class="wrap nav-inner">
+    <a class="brand" href="/">
+      <span class="brand-mark">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10.5h3.2l2.3-6.5 3.5 12 2.3-5.5H18"/></svg>
+      </span>
+      BillClear
+    </a>
+    <div class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#types">Bill types</a>
+      <a href="#proof">Reviews</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <a class="btn btn-primary btn-sm nav-cta" href="/app">Start free →</a>
+  </div>
+</nav>
+
+<!-- ── Hero ── -->
+<header class="hero">
+  <div class="wrap">
+    <span class="pill"><span class="pill-dot"></span>Now auditing 7 kinds of bills — free</span>
+    <h1>Every overcharge.<br><span class="accent">Caught.</span></h1>
+    <p>AI that fights back on <strong>medical, legal, utility and contractor</strong> bills. Upload it, and we flag every error and draft your dispute letter. <strong>Free.</strong></p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="/app">
+        Analyze your bill free
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h11M9 4l4 4-4 4"/></svg>
+      </a>
+      <a class="btn btn-ghost" href="#how">See how it works</a>
+    </div>
+    <div class="hero-note">No credit card. No API key. Results in under 30 seconds.</div>
+  </div>
+</header>
+
+<!-- ── Stats bar ── -->
+<div class="statsbar" id="stats">
+  <div class="wrap">
+    <div class="statsbar-grid">
+      <div class="statcell">
+        <div class="num"><span class="cur">$</span><span class="count" data-target="1.2" data-decimals="1"></span>T</div>
+        <div class="lbl">overpaid every year across all bill types</div>
+      </div>
+      <div class="statcell">
+        <div class="num"><span class="cur">$</span><span class="count" data-target="847"></span></div>
+        <div class="lbl">average overcharge our AI finds per bill</div>
+      </div>
+      <div class="statcell">
+        <div class="num"><span class="count" data-target="94"></span>%</div>
+        <div class="lbl">of bills contain at least one billing error</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── How it works ── -->
+<section class="block" id="how">
+  <div class="wrap">
+    <div class="eyebrow reveal">How it works</div>
+    <h2 class="sec-title reveal">Three steps. Under a minute.</h2>
+    <p class="sec-sub reveal">No spreadsheets, no phone trees, no advocate fees. Just your bill and an AI that reads the fine print for you.</p>
+    <div class="steps">
+      <div class="step reveal">
+        <span class="step-num">01</span>
+        <div class="step-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4m-4 5 4-4 4 4"/><path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/></svg></div>
+        <h3>Upload your bill</h3>
+        <p>Drop a PDF, snap a photo, or paste the charges. Any bill type — medical to property tax.</p>
+      </div>
+      <div class="step reveal">
+        <span class="step-num">02</span>
+        <div class="step-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M8 11h4M8 8.5h6"/></svg></div>
+        <h3>AI audits every line</h3>
+        <p>A domain-tuned model cross-checks each charge against typical rates, codes and duplicates.</p>
+      </div>
+      <div class="step reveal">
+        <span class="step-num">03</span>
+        <div class="step-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></div>
+        <h3>Get your dispute letter</h3>
+        <p>Every flag comes with an amount and a ready-to-send, formal dispute letter. Copy and send.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Bill types ── -->
+<section class="block" id="types" style="padding-top:0">
+  <div class="wrap">
+    <div class="eyebrow reveal">What we audit</div>
+    <h2 class="sec-title reveal">One tool. Seven kinds of bills.</h2>
+    <p class="sec-sub reveal">Each audit runs on a prompt tuned for that industry's tricks — not a generic checker.</p>
+    <div class="types">
+      <div class="type-card reveal">
+        <div class="type-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg></div>
+        <h3>Medical</h3>
+        <p>Phantom charges, upcoded procedures and duplicate billing.</p>
+      </div>
+      <div class="type-card reveal">
+        <div class="type-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7l7-4 7 4"/><path d="M5 7 2 14a4 4 0 0 0 6 0zM19 7l-3 7a4 4 0 0 0 6 0z"/></svg></div>
+        <h3>Legal</h3>
+        <p>Hour padding, duplicate entries and vague line items.</p>
+      </div>
+      <div class="type-card reveal">
+        <div class="type-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div>
+        <h3>Utility</h3>
+        <p>Wrong rate class, meter errors and estimated-read gaps.</p>
+      </div>
+      <div class="type-card reveal">
+        <div class="type-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m14 7 3 3M5 21l4-1 10.5-10.5a2.1 2.1 0 0 0-3-3L6 17z"/></svg></div>
+        <h3>Contractor</h3>
+        <p>Duplicate labor, inflated materials and unapproved change orders.</p>
+      </div>
+      <div class="type-card reveal">
+        <div class="type-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V5z"/><path d="m9 12 2 2 4-4"/></svg></div>
+        <h3>Insurance</h3>
+        <p>Wrong premium class, denied valid claims and coverage errors.</p>
+      </div>
+      <div class="type-card reveal">
+        <div class="type-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg></div>
+        <h3>Telecom</h3>
+        <p>Hidden fees, wrong plans and unauthorized add-on charges.</p>
+      </div>
+      <div class="type-card reveal">
+        <div class="type-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 21v-7h6v7"/></svg></div>
+        <h3>Property Tax</h3>
+        <p>Over-assessment vs comparables and wrong classification.</p>
+      </div>
+      <div class="type-card reveal" style="display:flex;align-items:center;justify-content:center;text-align:center;">
+        <div>
+          <h3 style="color:var(--blue-lt)">More coming</h3>
+          <p>Tuition, HOA, auto repair — request the next one.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Trust ── -->
+<section class="trust block">
+  <div class="wrap">
+    <div class="trust-grid">
+      <div class="trust-item reveal">
+        <div class="trust-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+        <h4>Bank-level encryption</h4>
+        <p>Every upload is encrypted in transit.</p>
+      </div>
+      <div class="trust-item reveal">
+        <div class="trust-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/><circle cx="12" cy="12" r="10"/></svg></div>
+        <h4>Your data never sold</h4>
+        <p>No ad networks. No data brokers. Ever.</p>
+      </div>
+      <div class="trust-item reveal">
+        <div class="trust-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+        <h4>Built by insiders</h4>
+        <p>Designed by healthcare & billing pros.</p>
+      </div>
+      <div class="trust-item reveal">
+        <div class="trust-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V5z"/></svg></div>
+        <h4>256-bit SSL</h4>
+        <p>Secured end-to-end on every request.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Social proof ── -->
+<section class="block" id="proof">
+  <div class="wrap">
+    <div class="eyebrow reveal">Social proof</div>
+    <h2 class="sec-title reveal">$847 average savings. 10,000+ bills analyzed.</h2>
+    <p class="sec-sub reveal">People are catching charges they'd have paid without a second thought.</p>
+    <div class="quotes">
+      <div class="quote reveal">
+        <div class="stars">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.1 4.6 1.4 6.7L12 17.8 5.9 20.3l1.4-6.7L2.2 9l6.9-.7z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.1 4.6 1.4 6.7L12 17.8 5.9 20.3l1.4-6.7L2.2 9l6.9-.7z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.1 4.6 1.4 6.7L12 17.8 5.9 20.3l1.4-6.7L2.2 9l6.9-.7z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.1 4.6 1.4 6.7L12 17.8 5.9 20.3l1.4-6.7L2.2 9l6.9-.7z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.1 4.6 1.4 6.7L12 17.8 5.9 20.3l1.4-6.7L2.2 9l6.9-.7z"/></svg>
+        </div>
+        <blockquote>"An ER bill charged me twice for the same CT scan. BillClear caught it in seconds and wrote the letter. $1,140 gone from my bill."</blockquote>
+        <div class="who">
+          <div class="avatar" style="background:linear-gradient(135deg,#0066FF,#4d94ff)">M</div>
+          <div><div class="name">Maya R.</div><div class="role">Medical bill · Austin, TX</div></div>
+        </div>
+      </div>
+      <div class="quote reveal">
+        <div class="stars">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.1 4.6 1.4 6.7L12 17.8 5.9 20.3l1.4-6.7L2.2 9l6.9-.7z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.1 4.6 1.4 6.7L12 17.8 5.9 20.3l1.4-6.7L2.2 9l6.9-.7z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.1 4.6 1.4 6.7L12 17.8 5.9 20.3l1.4-6.7L2.2 9l6.9-.7z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.1 4.6 1.4 6.7L12 17.8 5.9 20.3l1.4-6.7L2.2 9l6.9-.7z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.1 4.6 1.4 6.7L12 17.8 5.9 20.3l1.4-6.7L2.2 9l6.9-.7z"/></svg>
+        </div>
+        <blockquote>"My contractor's final invoice had labor billed twice under different names. Flagged instantly. Saved me $680 and an awkward guess."</blockquote>
+        <div class="who">
+          <div class="avatar" style="background:linear-gradient(135deg,#23d18b,#0a9)">D</div>
+          <div><div class="name">Darnell K.</div><div class="role">Contractor bill · Columbus, OH</div></div>
+        </div>
+      </div>
+      <div class="quote reveal">
+        <div class="stars">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.1 4.6 1.4 6.7L12 17.8 5.9 20.3l1.4-6.7L2.2 9l6.9-.7z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.1 4.6 1.4 6.7L12 17.8 5.9 20.3l1.4-6.7L2.2 9l6.9-.7z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.1 4.6 1.4 6.7L12 17.8 5.9 20.3l1.4-6.7L2.2 9l6.9-.7z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.1 4.6 1.4 6.7L12 17.8 5.9 20.3l1.4-6.7L2.2 9l6.9-.7z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.9.7-5.1 4.6 1.4 6.7L12 17.8 5.9 20.3l1.4-6.7L2.2 9l6.9-.7z"/></svg>
+        </div>
+        <blockquote>"My electric bill jumped 3x. Turns out I was on the wrong rate class for two years. The dispute letter got me a credit."</blockquote>
+        <div class="who">
+          <div class="avatar" style="background:linear-gradient(135deg,#ffb84d,#f59e0b)">P</div>
+          <div><div class="name">Priya S.</div><div class="role">Utility bill · Sacramento, CA</div></div>
+        </div>
+      </div>
+    </div>
+    <p class="synthetic-note reveal">Testimonials are illustrative examples of the kinds of savings BillClear surfaces, not verified customer accounts.</p>
+  </div>
+</section>
+
+<!-- ── Comparison ── -->
+<section class="block" style="padding-top:0">
+  <div class="wrap">
+    <div class="eyebrow reveal">Why BillClear</div>
+    <h2 class="sec-title reveal">All the leverage. None of the cost.</h2>
+    <p class="sec-sub reveal">Compare the ways people fight a bad bill.</p>
+    <div class="table-wrap reveal">
+      <table class="cmp">
+        <thead>
+          <tr>
+            <th></th>
+            <th class="hl">BillClear</th>
+            <th>Patient advocate</th>
+            <th>Doing it yourself</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Cost</td>
+            <td class="col-hl"><span class="yes">Free</span></td>
+            <td class="no">15–35% of savings</td>
+            <td class="no">Your time</td>
+          </tr>
+          <tr>
+            <td>Speed</td>
+            <td class="col-hl"><span class="yes">Instant</span></td>
+            <td class="no">Days to weeks</td>
+            <td class="no">Hours of research</td>
+          </tr>
+          <tr>
+            <td>Availability</td>
+            <td class="col-hl"><span class="yes">24/7</span></td>
+            <td class="no">Business hours</td>
+            <td class="no">Whenever you can</td>
+          </tr>
+          <tr>
+            <td>Dispute letter</td>
+            <td class="col-hl"><span class="cell-ico yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Included</span></td>
+            <td class="no">Sometimes</td>
+            <td class="no">Write it yourself</td>
+          </tr>
+          <tr>
+            <td>Bill types covered</td>
+            <td class="col-hl"><span class="yes">7 and growing</span></td>
+            <td class="no">Usually medical only</td>
+            <td class="no">Any, if you know how</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ── FAQ ── -->
+<section class="block" id="faq" style="padding-top:0">
+  <div class="wrap">
+    <div class="eyebrow reveal">FAQ</div>
+    <h2 class="sec-title reveal">Questions, answered.</h2>
+    <div class="faq" style="margin-top:44px">
+      <details class="faq-item reveal">
+        <summary>Is it really free?<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></summary>
+        <div class="ans">Yes. Every account gets free bill analyses each month — no credit card, no trial that flips to paid. We may add premium features later, but auditing your bill and getting a dispute letter stays free.</div>
+      </details>
+      <details class="faq-item reveal">
+        <summary>How accurate is the AI?<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></summary>
+        <div class="ans">Each bill type runs on a prompt tuned for that industry's common errors, and every flag shows the reasoning and dollar amount so you can verify it. It's a powerful first pass — not legal or medical advice. For complex disputes, confirm with a professional.</div>
+      </details>
+      <details class="faq-item reveal">
+        <summary>What kinds of bills can I analyze?<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></summary>
+        <div class="ans">Medical, legal, utility, contractor, insurance, telecom and property-tax bills today — with more on the way. Pick the type in the app and the audit adjusts to match.</div>
+      </details>
+      <details class="faq-item reveal">
+        <summary>Is my data safe?<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></summary>
+        <div class="ans">Uploads are encrypted in transit and sent to the AI only to analyze your bill. We don't store your bill contents on our servers, and we never sell your data.</div>
+      </details>
+      <details class="faq-item reveal">
+        <summary>What happens after the analysis?<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></summary>
+        <div class="ans">You get a summary of potential overcharges, a line-by-line list of flags with amounts, and a formal dispute letter with placeholders for your details. Copy the letter, fill in your info, and send it to the provider.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ── Final CTA ── -->
+<section class="finalcta">
+  <div class="wrap">
+    <h2>Upload your first bill free.</h2>
+    <p>No credit card. Results in under 30 seconds.</p>
+    <a class="btn btn-primary" href="/app">
+      Analyze my bill
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h11M9 4l4 4-4 4"/></svg>
+    </a>
+  </div>
+</section>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="wrap">
+    <div class="foot-top">
+      <div class="foot-brand">
+        <a class="brand" href="/">
+          <span class="brand-mark">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10.5h3.2l2.3-6.5 3.5 12 2.3-5.5H18"/></svg>
+          </span>
+          BillClear
+        </a>
+        <p>AI that fights back on every bill. Catch the overcharges you'd otherwise pay.</p>
+      </div>
+      <div class="foot-cols">
+        <div class="foot-col">
+          <h5>Product</h5>
+          <a href="/app">Analyze a bill</a>
+          <a href="#how">How it works</a>
+          <a href="#types">Bill types</a>
+          <a href="#faq">FAQ</a>
+        </div>
+        <div class="foot-col">
+          <h5>Company</h5>
+          <a href="https://github.com/" target="_blank" rel="noopener">GitHub</a>
+          <a href="#">Privacy</a>
+          <a href="#">Terms</a>
+        </div>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 BillClear. Not legal or medical advice.</span>
+      <span>Analysis powered by AI · Secured with 256-bit SSL</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  /* Reveal-on-scroll */
+  const revObs = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); revObs.unobserve(e.target); } });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el => revObs.observe(el));
+
+  /* Animated stat counters */
+  function runCount(el) {
+    const target = parseFloat(el.dataset.target);
+    const decimals = parseInt(el.dataset.decimals || '0', 10);
+    const dur = 1600, start = performance.now();
+    function frame(now) {
+      const p = Math.min(1, (now - start) / dur);
+      const eased = 1 - Math.pow(1 - p, 3);
+      const val = target * eased;
+      el.textContent = val.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+      if (p < 1) requestAnimationFrame(frame);
+      else el.textContent = target.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    }
+    requestAnimationFrame(frame);
+  }
+  const statObs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.querySelectorAll('.count').forEach(runCount);
+        statObs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.35 });
+  const statsEl = document.getElementById('stats');
+  if (statsEl) statObs.observe(statsEl);
+</script>
+</body>
+</html>

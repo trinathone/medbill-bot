@@ -3,6 +3,9 @@
     "site": "billclear",
     "public": "static",
     "ignore": ["firebase.json", "**/.*"],
-    "rewrites": []
+    "rewrites": [
+      { "source": "/", "destination": "/landing.html" },
+      { "source": "/app", "destination": "/index.html" }
+    ]
   }
 }

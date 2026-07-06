@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 import httpx
 import fitz
@@ -210,20 +211,57 @@ async def root():
     return FileResponse("static/index.html")
 
 
+@app.get("/health")
+async def health():
+    start = time.time()
+    try:
+        result = {
+            "status": "ok",
+            "gemini_key_set": bool(GEMINI_API_KEY),
+            "firebase_project": FIREBASE_PROJECT_ID,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        logger.info(f"[/health] uid=- status=ok dur={time.time()-start:.2f}s")
+        return result
+    except Exception as e:
+        logger.error(f"[/health] uid=- error={e}")
+        raise
+
+
 @app.post("/extract")
 async def extract(file: UploadFile = File(...)):
-    data = await file.read()
-    if len(data) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="File too large (max 15MB)")
-    text = extract_text_from_file(data, file.filename or "", file.content_type or "")
-    return {"text": text, "chars": len(text)}
+    start = time.time()
+    try:
+        data = await file.read()
+        if len(data) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="File too large (max 15MB)")
+        text = extract_text_from_file(data, file.filename or "", file.content_type or "")
+        logger.info(f"[/extract] uid=- status=ok dur={time.time()-start:.2f}s")
+        return {"text": text, "chars": len(text)}
+    except HTTPException as e:
+        logger.error(f"[/extract] uid=- error={e.detail}")
+        raise
+    except Exception as e:
+        logger.error(f"[/extract] uid=- error={e}")
+        raise
 
 
 @app.get("/usage")
 async def usage_endpoint(request: Request):
-    user = verify_firebase_token(request)
-    u = get_usage(user["uid"])
-    return u
+    start = time.time()
+    uid = "unknown"
+    try:
+        user = verify_firebase_token(request)
+        uid = user["uid"]
+        u = get_usage(uid)
+        logger.info(f"[/usage] uid={uid} status=ok dur={time.time()-start:.2f}s")
+        return u
+    except HTTPException as e:
+        logger.error(f"[/usage] uid={uid} error={e.detail}")
+        raise
+    except Exception as e:
+        logger.error(f"[/usage] uid={uid} error={e}")
+        raise
 
 
 class AnalyzeRequest(BaseModel):
@@ -232,45 +270,65 @@ class AnalyzeRequest(BaseModel):
 
 @app.post("/analyze")
 async def analyze(body: AnalyzeRequest, request: Request):
-    user = verify_firebase_token(request)
-    uid = user["uid"]
+    start = time.time()
+    uid = "unknown"
+    try:
+        user = verify_firebase_token(request)
+        uid = user["uid"]
 
-    if not body.bill_text or len(body.bill_text.strip()) < 20:
-        raise HTTPException(status_code=400, detail="Bill text too short")
+        if not body.bill_text or len(body.bill_text.strip()) < 20:
+            raise HTTPException(status_code=400, detail="Bill text too short")
 
-    usage = check_and_increment_usage(uid)
-    if not usage["allowed"]:
-        raise HTTPException(
-            status_code=429,
-            detail=f"Free limit reached ({usage['limit']} analyses/month). Upgrade for unlimited access."
-        )
+        usage = check_and_increment_usage(uid)
+        if not usage["allowed"]:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Free limit reached ({usage['limit']} analyses/month). Upgrade for unlimited access."
+            )
 
-    result = await run_gemini(body.bill_text)
-    result["usage"] = usage
-    return result
+        result = await run_gemini(body.bill_text)
+        result["usage"] = usage
+        logger.info(f"[/analyze] uid={uid} status=ok dur={time.time()-start:.2f}s")
+        return result
+    except HTTPException as e:
+        logger.error(f"[/analyze] uid={uid} error={e.detail}")
+        raise
+    except Exception as e:
+        logger.error(f"[/analyze] uid={uid} error={e}")
+        raise
 
 
 @app.post("/analyze-file")
 async def analyze_file(request: Request, file: UploadFile = File(...)):
-    user = verify_firebase_token(request)
-    uid = user["uid"]
+    start = time.time()
+    uid = "unknown"
+    try:
+        user = verify_firebase_token(request)
+        uid = user["uid"]
 
-    data = await file.read()
-    if len(data) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="File too large (max 15MB)")
+        data = await file.read()
+        if len(data) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="File too large (max 15MB)")
 
-    import base64
-    b64 = base64.b64encode(data).decode()
-    mime = file.content_type if file.content_type and "image" in file.content_type else "image/jpeg"
-    bill_text = f"__IMAGE_BASE64__{mime}::{b64}"
+        import base64
+        b64 = base64.b64encode(data).decode()
+        mime = file.content_type if file.content_type and "image" in file.content_type else "image/jpeg"
+        bill_text = f"__IMAGE_BASE64__{mime}::{b64}"
 
-    usage = check_and_increment_usage(uid)
-    if not usage["allowed"]:
-        raise HTTPException(
-            status_code=429,
-            detail=f"Free limit reached ({usage['limit']} analyses/month). Upgrade for unlimited access."
-        )
+        usage = check_and_increment_usage(uid)
+        if not usage["allowed"]:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Free limit reached ({usage['limit']} analyses/month). Upgrade for unlimited access."
+            )
 
-    result = await run_gemini(bill_text)
-    result["usage"] = usage
-    return result
+        result = await run_gemini(bill_text)
+        result["usage"] = usage
+        logger.info(f"[/analyze-file] uid={uid} status=ok dur={time.time()-start:.2f}s")
+        return result
+    except HTTPException as e:
+        logger.error(f"[/analyze-file] uid={uid} error={e.detail}")
+        raise
+    except Exception as e:
+        logger.error(f"[/analyze-file] uid={uid} error={e}")
+        raise

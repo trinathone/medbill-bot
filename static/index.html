@@ -622,28 +622,44 @@ async function analyze() {
     window._fbToken = token;
 
     let res;
-    if (window._uploadedFile) {
-      // Image file — send as multipart directly to /analyze-file
-      const fd = new FormData();
-      fd.append('file', window._uploadedFile);
-      res = await fetch('https://medbill-bot-production.up.railway.app/analyze-file', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + token },
-        body: fd
-      });
-    } else {
-      // Text/PDF extracted text — send as JSON
-      res = await fetch('https://medbill-bot-production.up.railway.app/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ bill_text: billText })
-      });
+    try {
+      if (window._uploadedFile) {
+        // Image file — send as multipart directly to /analyze-file
+        const fd = new FormData();
+        fd.append('file', window._uploadedFile);
+        res = await fetch('https://medbill-bot-production.up.railway.app/analyze-file', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token },
+          body: fd
+        });
+      } else {
+        // Text/PDF extracted text — send as JSON
+        res = await fetch('https://medbill-bot-production.up.railway.app/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ bill_text: billText })
+        });
+      }
+    } catch {
+      document.getElementById('results').style.display = 'none';
+      showErr('Connection error — check your internet');
+      return;
     }
 
     if (res.status === 429) {
       const d = await res.json();
       document.getElementById('results').style.display = 'none';
       showErr(d.detail || 'Monthly limit reached.');
+      return;
+    }
+    if (res.status === 401) {
+      document.getElementById('results').style.display = 'none';
+      showErr('Session expired — please sign in again');
+      return;
+    }
+    if (res.status === 500) {
+      document.getElementById('results').style.display = 'none';
+      showErr('Server error — please try again in a moment');
       return;
     }
     if (!res.ok) {

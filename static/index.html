@@ -613,7 +613,7 @@ async function analyze() {
     const token = await window._fbUser.getIdToken(true);
     window._fbToken = token;
 
-    const res = await fetch('/analyze', {
+    const res = await fetch('https://medbill-bot-production.up.railway.app/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({ bill_text: billText })
@@ -639,7 +639,7 @@ async function analyze() {
     showErr(e.message || 'Analysis failed. Please try again.');
   } finally {
     btn.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5"/><path d="m13.5 13.5-3-3"/></svg>Analyze bill';
-    btn.disabled = billText.length < 20;
+    btn.disabled = !billText || billText.length < 20;
   }
 }
 

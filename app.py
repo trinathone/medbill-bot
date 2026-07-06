@@ -25,8 +25,10 @@ app = FastAPI(title="MedBill Bot")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
+    allow_credentials=False,
+    max_age=3600,
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -241,5 +243,31 @@ async def analyze(body: AnalyzeRequest, request: Request):
         )
 
     result = await run_gemini(body.bill_text)
+    result["usage"] = usage
+    return result
+
+
+@app.post("/analyze-file")
+async def analyze_file(request: Request, file: UploadFile = File(...)):
+    user = verify_firebase_token(request)
+    uid = user["uid"]
+
+    data = await file.read()
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File too large (max 15MB)")
+
+    import base64
+    b64 = base64.b64encode(data).decode()
+    mime = file.content_type if file.content_type and "image" in file.content_type else "image/jpeg"
+    bill_text = f"__IMAGE_BASE64__{mime}::{b64}"
+
+    usage = check_and_increment_usage(uid)
+    if not usage["allowed"]:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Free limit reached ({usage['limit']} analyses/month). Upgrade for unlimited access."
+        )
+
+    result = await run_gemini(bill_text)
     result["usage"] = usage
     return result

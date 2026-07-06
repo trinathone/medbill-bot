@@ -577,23 +577,31 @@ async function handleFile(file) {
   if (!file || !allowed.test(file.name)) { showErr('Upload a PDF or image file (JPG, PNG, HEIC, etc.)'); return; }
   hideErr();
   document.getElementById('file-name').textContent = file.name;
+
+  const isImage = /\.(jpg|jpeg|png|webp|heic|heif|bmp|tiff|tif|gif)$/i.test(file.name);
+
+  if (isImage) {
+    // Store file for direct upload at analyze time — skip /extract
+    window._uploadedFile = file;
+    billText = '__IMAGE__'; // marker so analyze knows file is ready
+    document.getElementById('bill-text').value = '[Image uploaded — ready to analyze]';
+    document.getElementById('char-count').textContent = 'Image ready';
+    document.getElementById('analyze-btn').disabled = false;
+    return;
+  }
+
+  // PDF — extract text via backend
+  window._uploadedFile = null;
   const fd = new FormData(); fd.append('file', file);
   try {
     const res = await fetch('https://medbill-bot-production.up.railway.app/extract', { method: 'POST', body: fd });
     if (!res.ok) throw new Error();
     const d = await res.json();
     const text = d.text || '';
-    // Don't show raw base64 in textarea for images
-    if (text.startsWith('__IMAGE_BASE64__')) {
-      document.getElementById('bill-text').value = '[Image uploaded — ready to analyze]';
-      billText = text; // keep real data for analysis
-      document.getElementById('char-count').textContent = 'Image ready';
-    } else {
-      document.getElementById('bill-text').value = text;
-      billText = text.trim();
-      document.getElementById('char-count').textContent = text.length.toLocaleString() + ' chars';
-    }
-    document.getElementById('analyze-btn').disabled = false;
+    document.getElementById('bill-text').value = text;
+    billText = text.trim();
+    document.getElementById('char-count').textContent = text.length.toLocaleString() + ' chars';
+    document.getElementById('analyze-btn').disabled = billText.length < 20;
   } catch { showErr('Could not process the file. Try pasting the text directly.'); }
 }
 
@@ -613,11 +621,24 @@ async function analyze() {
     const token = await window._fbUser.getIdToken(true);
     window._fbToken = token;
 
-    const res = await fetch('https://medbill-bot-production.up.railway.app/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ bill_text: billText })
-    });
+    let res;
+    if (window._uploadedFile) {
+      // Image file — send as multipart directly to /analyze-file
+      const fd = new FormData();
+      fd.append('file', window._uploadedFile);
+      res = await fetch('https://medbill-bot-production.up.railway.app/analyze-file', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: fd
+      });
+    } else {
+      // Text/PDF extracted text — send as JSON
+      res = await fetch('https://medbill-bot-production.up.railway.app/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ bill_text: billText })
+      });
+    }
 
     if (res.status === 429) {
       const d = await res.json();

@@ -451,6 +451,7 @@
   // expose to window for button handlers
   window._fbAuth     = auth;
   window._fbProvider = provider;
+  window._fbSignIn   = () => signInWithRedirect(auth, provider);
   window._fbSignOut  = () => signOut(auth);
 
   // handle redirect result on page load
@@ -495,7 +496,7 @@ function signInWithGoogle() {
   _doSignIn();
 }
 function _doSignIn() {
-  window._fbAuth.signInWithRedirect(window._fbProvider).catch(e => {
+  window._fbSignIn().catch(e => {
     console.error(e);
     showErr("Sign-in failed: " + e.message);
   });

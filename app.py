@@ -163,7 +163,7 @@ Types:
 - ok: charge appears reasonable (include 1-2 ok items for balance)
 """
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
 
     if is_image:
         # Vision mode — send image directly to Gemini
